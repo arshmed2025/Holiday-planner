@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MBBS Phase 1 — Holiday Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- ============================================================
+  QUICK EDIT GUIDE
+  ---------------------------------------------------------------
+  1. UPDATE YOUR ATTENDANCE (as of 7 Jun 2026)
+     → Find the CONFIG block below, edit CURRENT_ATT
+
+  2. UPDATE ATTENDANCE THRESHOLDS
+     → Edit THRESHOLDS in CONFIG
+
+  3. FIX A CLASS COUNT FOR A SPECIFIC DAY
+     → Find TIMETABLE_DATA below (auto-generated from Excel)
+     → Each entry is one day. Find by "iso" date and edit the
+       numbers inside "AN", "BC", "PY" objects.
+       ECE / L (L+SDL merged) / SGT
+
+  4. ADD A NEW FIXED HOLIDAY (college declared)
+     → In TIMETABLE_DATA, find the day and set "fixed": true
+
+  5. CHANGE COLOURS / FONTS
+     → Edit the CSS :root variables below
+============================================================ -->
+
+<style>
+:root {
+  /* ---- Brand colours per subject ---- */
+  --an-dark:  #185FA5;
+  --an-light: #deeaf7;
+  --an-text:  #0c3d6e;
+  --bc-dark:  #2d7a3e;
+  --bc-light: #d6f0dc;
+  --bc-text:  #1a4d25;
+  --py-dark:  #8b3a6e;
+  --py-light: #f5dced;
+  --py-text:  #5a1f46;
+
+  /* ---- Status colours ---- */
+  --safe:    #2d7a3e;
+  --warn:    #b06a00;
+  --danger:  #b02020;
+
+  /* ---- UI palette ---- */
+  --bg:         #f5f3ee;
+  --surface:    #ffffff;
+  --surface2:   #f0ede6;
+  --border:     rgba(0,0,0,.09);
+  --border-str: rgba(0,0,0,.17);
+  --text:       #1a1a18;
+  --muted:      #706e66;
+  --faint:      #a09e96;
+  --radius:     10px;
+  --radius-sm:  6px;
+  --shadow:     0 2px 8px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.05);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; min-height:100vh; }
+.page { max-width:980px; margin:0 auto; padding:2rem 1.5rem 4rem; }
+
+/* ---- Header ---- */
+header { display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:1rem; border-bottom:1.5px solid var(--border-str); padding-bottom:1.2rem; margin-bottom:1.8rem; }
+header h1 { font-family:'DM Serif Display',serif; font-size:1.8rem; font-weight:400; letter-spacing:-.02em; line-height:1.1; }
+header h1 span { display:block; font-family:'DM Sans',sans-serif; font-size:.75rem; font-weight:400; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; margin-bottom:4px; }
+.header-actions { display:flex; gap:8px; }
+button { font-family:'DM Sans',sans-serif; font-size:13px; padding:7px 14px; border-radius:var(--radius-sm); border:1px solid var(--border-str); background:var(--surface); color:var(--text); cursor:pointer; font-weight:500; transition:background .15s, transform .1s; }
+button:hover { background:var(--surface2); }
+button:active { transform:scale(.97); }
+button.primary { background:var(--text); color:var(--surface); border-color:var(--text); }
+button.primary:hover { background:#333; }
+
+/* ---- Info box ---- */
+.tip { background:#deeaf7; border:1px solid #b5d4f4; border-radius:var(--radius-sm); padding:10px 14px; font-size:12px; color:#0c3d6e; margin-bottom:1.4rem; line-height:1.7; }
+
+/* ---- Current attendance section ---- */
+.section-label { font-size:11px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+.current-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:1.8rem; }
+.curr-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+.curr-title { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px; }
+.curr-title.an { color:var(--an-dark); } .curr-title.bc { color:var(--bc-dark); } .curr-title.py { color:var(--py-dark); }
+.curr-row { margin-bottom:6px; }
+.curr-row-top { display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px; }
+.curr-row-label { color:var(--muted); }
+.curr-row-pct { font-weight:600; }
+.curr-row-pct.safe { color:var(--safe); } .curr-row-pct.warn { color:var(--warn); } .curr-row-pct.danger { color:var(--danger); }
+.bar-track { height:4px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:3px; }
+.bar-fill.safe { background:var(--safe); } .bar-fill.warn { background:var(--warn); } .bar-fill.danger { background:var(--danger); }
+.curr-detail { font-size:10px; color:var(--faint); margin-top:2px; text-align:right; }
+.curr-total-row { display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:8px; border-top:1px solid var(--border); }
+.curr-total-label { font-size:11px; font-weight:600; color:var(--muted); }
+.curr-total-pct { font-family:'DM Serif Display',serif; font-size:1.3rem; line-height:1; }
+.curr-total-pct.safe { color:var(--safe); } .curr-total-pct.warn { color:var(--warn); } .curr-total-pct.danger { color:var(--danger); }
+.short-alert { display:inline-flex; align-items:center; gap:3px; font-size:9.5px; font-weight:600; background:#fde8e8; color:#a32d2d; padding:2px 6px; border-radius:4px; margin-top:6px; }
+.short-list { display:flex; flex-direction:column; gap:3px; margin-top:6px; }
+
+/* ---- Projection summary strip ---- */
+.proj-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:1.8rem; }
+.proj-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+.proj-name { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px; }
+.proj-name.an { color:var(--an-dark); } .proj-name.bc { color:var(--bc-dark); } .proj-name.py { color:var(--py-dark); }
+.proj-val { font-family:'DM Serif Display',serif; font-size:1.5rem; line-height:1.1; }
+.proj-val.safe { color:var(--safe); } .proj-val.warn { color:var(--warn); } .proj-val.danger { color:var(--danger); }
+.proj-sub { font-size:11px; color:var(--muted); margin-top:4px; }
+
+/* ---- Legend ---- */
+.legend { display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-bottom:1.1rem; font-size:12px; color:var(--muted); }
+.legend strong { color:var(--text); }
+.leg { display:flex; align-items:center; gap:5px; }
+.dot { width:10px; height:10px; border-radius:3px; }
+.dot-an { background:var(--an-dark); } .dot-bc { background:var(--bc-dark); } .dot-py { background:var(--py-dark); }
+.dot-off { background:#e24b4a; } .dot-fixed { background:#c8bff7; }
+
+/* ---- Calendar ---- */
+.week-block { margin-bottom:1.5rem; }
+.week-title { font-size:11px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; }
+.days-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
+.day-cell { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:9px 8px 8px; cursor:pointer; min-height:105px; position:relative; display:flex; flex-direction:column; gap:3px; user-select:none; transition:box-shadow .15s, transform .1s, border-color .15s; }
+.day-cell:not(.fixed):hover { box-shadow:var(--shadow); transform:translateY(-2px); border-color:var(--border-str); }
+.day-cell.no-classes { background:var(--bg); border-style:dashed; cursor:default; }
+.day-cell.no-classes:hover { transform:none; box-shadow:none; border-color:var(--border); }
+.day-cell.holiday { background:#fff5f5; border-color:#f7c1c1; }
+.day-cell.fixed { background:#f7f3ff; border-color:#c8bff7; cursor:default; }
+.day-date { font-size:10px; color:var(--faint); }
+.day-name { font-size:13px; font-weight:600; }
+.pills { display:flex; flex-direction:column; gap:2px; flex:1; margin-top:1px; }
+.pill { font-size:9.5px; padding:2px 5px; border-radius:4px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pill-an { background:var(--an-light); color:var(--an-text); }
+.pill-bc { background:var(--bc-light); color:var(--bc-text); }
+.pill-py { background:var(--py-light); color:var(--py-text); }
+.badge { position:absolute; top:6px; right:6px; font-size:9px; padding:2px 5px; border-radius:4px; font-weight:600; }
+.badge-off   { background:#f7c1c1; color:#a32d2d; }
+.badge-fixed { background:#c8bff7; color:#3b2d8a; }
+.class-count { font-size:9px; color:var(--faint); text-align:right; margin-top:auto; }
+
+/* ---- Detailed projection ---- */
+.detail-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:1.5rem; }
+.detail-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+.detail-title { font-size:13px; font-weight:600; padding-bottom:8px; margin-bottom:10px; border-bottom:1px solid var(--border); }
+.detail-title.an { color:var(--an-dark); } .detail-title.bc { color:var(--bc-dark); } .detail-title.py { color:var(--py-dark); }
+.type-row { margin-bottom:8px; }
+.type-header { display:flex; justify-content:space-between; align-items:baseline; font-size:11px; margin-bottom:2px; }
+.type-label { color:var(--muted); font-weight:500; }
+.type-pct { font-weight:600; font-size:12px; }
+.type-pct.safe { color:var(--safe); } .type-pct.warn { color:var(--warn); } .type-pct.danger { color:var(--danger); }
+.type-note { font-size:10px; color:var(--faint); margin-top:2px; text-align:right; }
+.proj-total-row { display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:8px; border-top:1px solid var(--border); }
+.proj-total-label { font-size:11px; font-weight:600; color:var(--muted); }
+.proj-total-pct { font-family:'DM Serif Display',serif; font-size:1.3rem; line-height:1; }
+.proj-total-pct.safe { color:var(--safe); } .proj-total-pct.warn { color:var(--warn); } .proj-total-pct.danger { color:var(--danger); }
+
+/* ---- Footer ---- */
+.footer-row { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:1rem; font-size:12px; }
+.footer-info { color:var(--muted); }
+.footer-info strong { color:var(--text); }
+.footer-thresh { color:var(--faint); }
+
+.divider { height:1px; background:var(--border); margin:1.8rem 0; }
+
+@media (max-width:700px) {
+  .days-grid { grid-template-columns:repeat(3,1fr); }
+  .current-grid, .proj-strip, .detail-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1><span>MBBS Phase 1 · Batch 2025</span>Holiday Planner</h1>
+    <div class="header-actions">
+      <button onclick="resetHolidays()">↺ Reset</button>
+      <button class="primary" onclick="exportSummary()">⬇ Export</button>
+    </div>
+  </header>
+
+  <div class="tip">
+    <strong>How to use:</strong> Click any day to toggle it as a holiday.
+    All three panels update live — current attendance, projection, and per-type bars.
+    Sundays are hidden. The 18 Jun college holiday is locked.
+    To update class counts, open this file in a text editor and edit <code>TIMETABLE_DATA</code>.
+  </div>
+
+  <!-- Current attendance (as of 7 Jun 2026) -->
+  <div class="section-label">Current attendance — as of 7 Jun 2026 &nbsp;<span style="font-weight:400;color:var(--faint)">(before week 35 starts)</span></div>
+  <div class="current-grid" id="currentCards"></div>
+
+  <!-- Projection summary after selected holidays -->
+  <div class="section-label">Projected final attendance — after selected holidays &nbsp;<span style="font-weight:400;color:var(--faint)">(assumes attending all other classes)</span></div>
+  <div class="proj-strip" id="projCards"></div>
+
+  <!-- Legend + Calendar -->
+  <div class="legend">
+    <strong>Legend:</strong>
+    <span class="leg"><span class="dot dot-an"></span>Anatomy</span>
+    <span class="leg"><span class="dot dot-bc"></span>Biochemistry</span>
+    <span class="leg"><span class="dot dot-py"></span>Physiology</span>
+    <span class="leg"><span class="dot dot-off"></span>Holiday (you)</span>
+    <span class="leg"><span class="dot dot-fixed"></span>Fixed holiday</span>
+  </div>
+  <div id="calendarRoot"></div>
+
+  <div class="divider"></div>
+
+  <!-- Per-type detail projection -->
+  <div class="section-label">Projected attendance by session type &nbsp;<span style="font-weight:400;color:var(--faint)">— ⚠ SHORT = will fall below minimum threshold</span></div>
+  <div class="detail-grid" id="detailCards"></div>
+
+  <div class="footer-row">
+    <div class="footer-info" id="footerMsg"></div>
+    <div class="footer-thresh">Thresholds: ECE ≥ 80% · L/SDL ≥ 80% · SGT ≥ 85%</div>
+  </div>
+
+</div><!-- .page -->
+
+<script>
+// ============================================================
+// CONFIG — edit these when your attendance changes
+// ============================================================
+const CURRENT_ATT = {
+  // Format: { present: X, total: Y }  (as of 7 Jun 2026)
+  AN: {
+    ECE: { present: 2,   total: 4   },
+    L:   { present: 169, total: 179 },  // L + SDL combined
+    SGT: { present: 246, total: 260 },
+  },
+  BC: {
+    ECE: { present: 5,   total: 6   },
+    L:   { present: 64,  total: 66  },
+    SGT: { present: 125, total: 132 },
+  },
+  PY: {
+    ECE: { present: 3,   total: 3   },
+    L:   { present: 126, total: 133 },
+    SGT: { present: 156, total: 160 },
+  },
+};
+
+const THRESHOLDS = {
+  ECE: 80,   // minimum % required
+  L:   80,
+  SGT: 85,
+};
+
+// ============================================================
+// TIMETABLE DATA — generated from Attendance_Analysis.xlsx
+// Each entry = one calendar day (Sundays are hidden).
+// To edit a day: find its "iso" date and change ECE/L/SGT numbers.
+// L already includes SDL (they count the same for attendance).
+// Set "fixed: true" to lock a day as a non-toggleable holiday.
+// ============================================================
+const TIMETABLE_DATA = [
+  // --- Week 35 (8–13 Jun) ---
+  { date:"8 Jun",  day:"Mon", iso:"2026-06-08", week:"Week 35", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:1,L:0,SGT:1} },
+  { date:"9 Jun",  day:"Tue", iso:"2026-06-09", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:1,L:0,SGT:1} },
+  { date:"10 Jun", day:"Wed", iso:"2026-06-10", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"11 Jun", day:"Thu", iso:"2026-06-11", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:2,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"12 Jun", day:"Fri", iso:"2026-06-12", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"13 Jun", day:"Sat", iso:"2026-06-13", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:1}, PY:{ECE:0,L:1,SGT:0} },
+
+  // --- Week 36 (15–20 Jun) ---
+  { date:"15 Jun", day:"Mon", iso:"2026-06-15", week:"Week 36", fixed:false, AN:{ECE:1,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"16 Jun", day:"Tue", iso:"2026-06-16", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"17 Jun", day:"Wed", iso:"2026-06-17", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"18 Jun", day:"Thu", iso:"2026-06-18", week:"Week 36", fixed:true,  AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} },
+  { date:"19 Jun", day:"Fri", iso:"2026-06-19", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"20 Jun", day:"Sat", iso:"2026-06-20", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:1,SGT:0} },
+
+  // --- Week 37 (22–27 Jun) ---
+  { date:"22 Jun", day:"Mon", iso:"2026-06-22", week:"Week 37", fixed:false, AN:{ECE:0,L:2,SGT:1}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"23 Jun", day:"Tue", iso:"2026-06-23", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"24 Jun", day:"Wed", iso:"2026-06-24", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} },
+  { date:"25 Jun", day:"Thu", iso:"2026-06-25", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"26 Jun", day:"Fri", iso:"2026-06-26", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:1,SGT:0} },
+  { date:"27 Jun", day:"Sat", iso:"2026-06-27", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:1,SGT:1}, PY:{ECE:0,L:1,SGT:0} },
+
+  // --- Week 38 (29 Jun – 4 Jul) ---
+  { date:"29 Jun", day:"Mon", iso:"2026-06-29", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"30 Jun", day:"Tue", iso:"2026-06-30", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"1 Jul",  day:"Wed", iso:"2026-07-01", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"2 Jul",  day:"Thu", iso:"2026-07-02", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:1}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"3 Jul",  day:"Fri", iso:"2026-07-03", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} },
+  { date:"4 Jul",  day:"Sat", iso:"2026-07-04", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:1} },
+
+  // --- Week 39 (6–11 Jul) ---
+  { date:"6 Jul",  day:"Mon", iso:"2026-07-06", week:"Week 39", fixed:false, AN:{ECE:0,L:2,SGT:1}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"7 Jul",  day:"Tue", iso:"2026-07-07", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"8 Jul",  day:"Wed", iso:"2026-07-08", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"9 Jul",  day:"Thu", iso:"2026-07-09", week:"Week 39", fixed:false, AN:{ECE:0,L:0,SGT:1}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"10 Jul", day:"Fri", iso:"2026-07-10", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"11 Jul", day:"Sat", iso:"2026-07-11", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+
+  // --- Week 40 (13–18 Jul) ---
+  { date:"13 Jul", day:"Mon", iso:"2026-07-13", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:1}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"14 Jul", day:"Tue", iso:"2026-07-14", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} },
+  { date:"15 Jul", day:"Wed", iso:"2026-07-15", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"16 Jul", day:"Thu", iso:"2026-07-16", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:1,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"17 Jul", day:"Fri", iso:"2026-07-17", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"18 Jul", day:"Sat", iso:"2026-07-18", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:1} },
+
+  // --- Week 41 (20–25 Jul) ---
+  { date:"20 Jul", day:"Mon", iso:"2026-07-20", week:"Week 41", fixed:false, AN:{ECE:0,L:2,SGT:1}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"21 Jul", day:"Tue", iso:"2026-07-21", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"22 Jul", day:"Wed", iso:"2026-07-22", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"23 Jul", day:"Thu", iso:"2026-07-23", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"24 Jul", day:"Fri", iso:"2026-07-24", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"25 Jul", day:"Sat", iso:"2026-07-25", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
+];
+
+// ============================================================
+// APP STATE
+// ============================================================
+const holidays = new Set(
+  TIMETABLE_DATA.filter(d => d.fixed).map(d => d.iso)
+);
+
+// ============================================================
+// CORE CALCULATIONS
+// ============================================================
+
+// Count future sessions on non-holiday days
+function futureSessions() {
+  const fut = {
+    AN:{ECE:0,L:0,SGT:0},
+    BC:{ECE:0,L:0,SGT:0},
+    PY:{ECE:0,L:0,SGT:0},
+  };
+  TIMETABLE_DATA.forEach(d => {
+    if (holidays.has(d.iso)) return;
+    ['AN','BC','PY'].forEach(s => {
+      ['ECE','L','SGT'].forEach(t => {
+        fut[s][t] += d[s][t];
+      });
+    });
+  });
+  return fut;
+}
+
+// Project final attendance assuming student attends all remaining non-holiday sessions
+function projectAttendance(fut) {
+  const proj = {};
+  ['AN','BC','PY'].forEach(s => {
+    proj[s] = {};
+    ['ECE','L','SGT'].forEach(t => {
+      const cur  = CURRENT_ATT[s][t];
+      const newTotal   = cur.total   + fut[s][t];
+      const newPresent = cur.present + fut[s][t];  // assumes attending all future
+      const needed  = Math.ceil(newTotal * THRESHOLDS[t] / 100);
+      const buffer  = newPresent - needed;
+      const pct     = newTotal > 0 ? Math.round(newPresent / newTotal * 100) : 100;
+      proj[s][t] = { total:newTotal, present:newPresent, needed, buffer, pct, req:THRESHOLDS[t] };
+    });
+  });
+  return proj;
+}
+
+// Status class based on buffer
+function status(buffer) {
+  return buffer < 0 ? 'danger' : buffer < 3 ? 'warn' : 'safe';
+}
+
+// ============================================================
+// RENDER: Current attendance cards (as of 7 Jun 2026 — static)
+// Shows per-type bars + overall combined % + SHORT alerts
+// ============================================================
+function renderCurrentCards() {
+  const names  = { AN:'Anatomy', BC:'Biochemistry', PY:'Physiology' };
+  const labels = { ECE:'ECE', L:'L / SDL', SGT:'SGT' };
+  let html = '';
+
+  ['AN','BC','PY'].forEach(s => {
+    // Overall combined % = sum of all presents / sum of all totals
+    const totalPresent = ['ECE','L','SGT'].reduce((a,t) => a + CURRENT_ATT[s][t].present, 0);
+    const totalClasses = ['ECE','L','SGT'].reduce((a,t) => a + CURRENT_ATT[s][t].total,   0);
+    const overallPct   = totalClasses > 0 ? Math.round(totalPresent / totalClasses * 100) : 100;
+
+    // Collect which types are SHORT right now
+    const shortTypes = ['ECE','L','SGT'].filter(t => {
+      const { present, total } = CURRENT_ATT[s][t];
+      return total > 0 && Math.round(present / total * 100) < THRESHOLDS[t];
+    });
+
+    const overallCls = overallPct >= 85 ? 'safe' : overallPct >= 80 ? 'warn' : 'danger';
+
+    html += `<div class="curr-card">
+      <div class="curr-title ${s.toLowerCase()}">${names[s]}</div>`;
+
+    ['ECE','L','SGT'].forEach(t => {
+      const { present, total } = CURRENT_ATT[s][t];
+      const req = THRESHOLDS[t];
+      const pct = total > 0 ? Math.round(present / total * 100) : 100;
+      const cls = pct >= req ? 'safe' : pct >= req - 5 ? 'warn' : 'danger';
+      const isShort = total > 0 && pct < req;
+      html += `<div class="curr-row">
+        <div class="curr-row-top">
+          <span class="curr-row-label">${labels[t]}${isShort ? ' <span style="color:var(--danger);font-weight:700">⚠ SHORT</span>' : ''}</span>
+          <span class="curr-row-pct ${cls}">${pct}%</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill ${cls}" style="width:${Math.min(100,pct)}%"></div>
+        </div>
+        <div class="curr-detail">${present}/${total} &nbsp;·&nbsp; need ≥${req}%${isShort ? ` &nbsp;·&nbsp; <span style="color:var(--danger)">${Math.ceil(total * req/100) - present} more needed</span>` : ''}</div>
+      </div>`;
+    });
+
+    // Overall % total row
+    html += `<div class="curr-total-row">
+      <span class="curr-total-label">Overall (${totalPresent}/${totalClasses})</span>
+      <span class="curr-total-pct ${overallCls}">${overallPct}%</span>
+    </div>`;
+
+    html += `</div>`;
+  });
+
+  document.getElementById('currentCards').innerHTML = html;
+}
+
+// ============================================================
+// RENDER: Projection summary strip (top 3 cards)
+// ============================================================
+function renderProjStrip(proj) {
+  const names = { AN:'Anatomy', BC:'Biochemistry', PY:'Physiology' };
+  let html = '';
+
+  ['AN','BC','PY'].forEach(s => {
+    const minBuf = Math.min(...['ECE','L','SGT'].map(t => proj[s][t].buffer));
+    const cls    = status(minBuf);
+
+    // Overall projected %
+    const totalPresent = ['ECE','L','SGT'].reduce((a,t) => a + proj[s][t].present, 0);
+    const totalClasses = ['ECE','L','SGT'].reduce((a,t) => a + proj[s][t].total,   0);
+    const overallPct   = totalClasses > 0 ? Math.round(totalPresent / totalClasses * 100) : 100;
+
+    const holCount = [...holidays].filter(iso => {
+      const d = TIMETABLE_DATA.find(x => x.iso === iso);
+      return d && !d.fixed && (d[s].ECE + d[s].L + d[s].SGT > 0);
+    }).length;
+
+    const bufText  = minBuf >= 0 ? `+${minBuf} can skip` : `⚠ ${Math.abs(minBuf)} short`;
+
+    // Short types for quick callout
+    const shortTypes = ['ECE','L','SGT'].filter(t => proj[s][t].total > 0 && proj[s][t].buffer < 0);
+    const shortNote  = shortTypes.length > 0
+      ? `<div style="font-size:10px;color:var(--danger);font-weight:600;margin-top:4px;">SHORT: ${shortTypes.join(', ')}</div>`
+      : '';
+
+    html += `<div class="proj-card">
+      <div class="proj-name ${s.toLowerCase()}">${names[s]}</div>
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:2px;">
+        <span class="proj-val ${cls}">${overallPct}%</span>
+        <span style="font-size:12px;color:var(--muted)">overall</span>
+      </div>
+      <div style="font-size:12px;color:var(--${cls === 'safe' ? 'safe' : cls === 'warn' ? 'warn' : 'danger'});font-weight:500;">${bufText}</div>
+      ${shortNote}
+      <div class="proj-sub" style="margin-top:4px;">${holCount} holiday day${holCount !== 1 ? 's' : ''} with ${s} classes</div>
+    </div>`;
+  });
+
+  document.getElementById('projCards').innerHTML = html;
+}
+
+// ============================================================
+// RENDER: Calendar
+// ============================================================
+function renderCalendar() {
+  // Group days by week
+  const weeks = {};
+  TIMETABLE_DATA.forEach(d => {
+    if (!d.week) return;  // skip Sundays with empty week label
+    if (!weeks[d.week]) weeks[d.week] = [];
+    weeks[d.week].push(d);
+  });
+
+  const weekOrder = ['Week 35','Week 36','Week 37','Week 38','Week 39','Week 40','Week 41'];
+  let html = '';
+
+  weekOrder.forEach(wk => {
+    if (!weeks[wk]) return;
+    html += `<div class="week-block"><div class="week-title">${wk}</div><div class="days-grid">`;
+
+    weeks[wk].forEach(d => {
+      const isOff   = holidays.has(d.iso);
+      const total   = d.AN.ECE + d.AN.L + d.AN.SGT + d.BC.ECE + d.BC.L + d.BC.SGT + d.PY.ECE + d.PY.L + d.PY.SGT;
+      const isEmpty = total === 0;
+
+      let cellClass = 'day-cell';
+      if (d.fixed)       cellClass += ' fixed';
+      else if (isOff)    cellClass += ' holiday';
+      else if (isEmpty)  cellClass += ' no-classes';
+
+      const onclick = d.fixed || isEmpty ? '' : `onclick="toggleDay('${d.iso}')"`;
+
+      // Build subject pills
+      let pills = '';
+      if (d.AN.ECE + d.AN.L + d.AN.SGT > 0) {
+        const parts = [];
+        if (d.AN.ECE) parts.push(`ECE×${d.AN.ECE}`);
+        if (d.AN.L)   parts.push(`L×${d.AN.L}`);
+        if (d.AN.SGT) parts.push(`SGT×${d.AN.SGT}`);
+        pills += `<div class="pill pill-an">AN: ${parts.join(' ')}</div>`;
+      }
+      if (d.BC.ECE + d.BC.L + d.BC.SGT > 0) {
+        const parts = [];
+        if (d.BC.ECE) parts.push(`ECE×${d.BC.ECE}`);
+        if (d.BC.L)   parts.push(`L×${d.BC.L}`);
+        if (d.BC.SGT) parts.push(`SGT×${d.BC.SGT}`);
+        pills += `<div class="pill pill-bc">BC: ${parts.join(' ')}</div>`;
+      }
+      if (d.PY.ECE + d.PY.L + d.PY.SGT > 0) {
+        const parts = [];
+        if (d.PY.ECE) parts.push(`ECE×${d.PY.ECE}`);
+        if (d.PY.L)   parts.push(`L×${d.PY.L}`);
+        if (d.PY.SGT) parts.push(`SGT×${d.PY.SGT}`);
+        pills += `<div class="pill pill-py">PY: ${parts.join(' ')}</div>`;
+      }
+      if (isEmpty) pills = `<span style="font-size:10px;color:var(--faint)">no classes</span>`;
+
+      const badge = d.fixed
+        ? `<span class="badge badge-fixed">FIXED</span>`
+        : isOff ? `<span class="badge badge-off">OFF</span>` : '';
+
+      const countBadge = (!isOff && !d.fixed && total > 0)
+        ? `<div class="class-count">${total} classes</div>` : '';
+
+      html += `<div class="${cellClass}" ${onclick} title="${d.date} — ${total} class${total !== 1 ? 'es' : ''}">
+        <div class="day-date">${d.date}</div>
+        <div class="day-name">${d.day}</div>
+        <div class="pills">${pills}</div>
+        ${badge}
+        ${countBadge}
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  document.getElementById('calendarRoot').innerHTML = html;
+}
+
+// ============================================================
+// RENDER: Detailed projection cards (updates with holiday toggles)
+// Shows per-type bars + overall projected % + SHORT alerts
+// ============================================================
+function renderDetailCards(proj) {
+  const names  = { AN:'Anatomy', BC:'Biochemistry', PY:'Physiology' };
+  const labels = { ECE:'ECE', L:'L / SDL', SGT:'SGT' };
+  let html = '';
+
+  ['AN','BC','PY'].forEach(s => {
+    // Overall projected % = sum present / sum total across all types
+    const totalPresent = ['ECE','L','SGT'].reduce((a,t) => a + proj[s][t].present, 0);
+    const totalClasses = ['ECE','L','SGT'].reduce((a,t) => a + proj[s][t].total,   0);
+    const overallPct   = totalClasses > 0 ? Math.round(totalPresent / totalClasses * 100) : 100;
+    const overallCls   = overallPct >= 85 ? 'safe' : overallPct >= 80 ? 'warn' : 'danger';
+
+    // Types that will be SHORT at end of term with current holiday plan
+    const shortTypes = ['ECE','L','SGT'].filter(t => proj[s][t].total > 0 && proj[s][t].buffer < 0);
+
+    html += `<div class="detail-card">
+      <div class="detail-title ${s.toLowerCase()}">${names[s]}</div>`;
+
+    // SHORT alert banner at top of card if anything is short
+    if (shortTypes.length > 0) {
+      const shortLabels = shortTypes.map(t => `${labels[t]} (${Math.abs(proj[s][t].buffer)} short)`);
+      html += `<div class="short-list">`;
+      shortTypes.forEach(t => {
+        const d = proj[s][t];
+        html += `<div class="short-alert">⚠ ${labels[t]} will be SHORT — need ${Math.abs(d.buffer)} more class${Math.abs(d.buffer) !== 1 ? 'es' : ''} attended</div>`;
+      });
+      html += `</div>`;
+    }
+
+    ['ECE','L','SGT'].forEach(t => {
+      const d = proj[s][t];
+      if (d.total === 0) {
+        html += `<div class="type-row">
+          <div class="type-header">
+            <span class="type-label">${labels[t]}</span>
+            <span style="font-size:10px;color:var(--faint)">no classes</span>
+          </div>
+        </div>`;
+        return;
+      }
+      const cls      = status(d.buffer);
+      const isShort  = d.buffer < 0;
+      const bufText  = isShort
+        ? `<span style="color:var(--danger);font-weight:600">⚠ ${Math.abs(d.buffer)} short</span>`
+        : `+${d.buffer} buffer`;
+
+      html += `<div class="type-row">
+        <div class="type-header">
+          <span class="type-label">${labels[t]}${isShort ? ' <span style="color:var(--danger);font-size:9px;font-weight:700"> ⚠ SHORT</span>' : ''} &nbsp;<span style="color:var(--faint);font-weight:400">(need ≥${d.req}%)</span></span>
+          <span class="type-pct ${cls}">${d.pct}%</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill ${cls}" style="width:${Math.min(100,d.pct)}%"></div>
+        </div>
+        <div class="type-note">${d.present}/${d.total} &nbsp;·&nbsp; ${bufText}</div>
+      </div>`;
+    });
+
+    // Overall projected total row
+    html += `<div class="proj-total-row">
+      <span class="proj-total-label">Overall projected (${totalPresent}/${totalClasses})</span>
+      <span class="proj-total-pct ${overallCls}">${overallPct}%</span>
+    </div>`;
+
+    html += `</div>`;
+  });
+
+  document.getElementById('detailCards').innerHTML = html;
+}
+
+// ============================================================
+// RENDER: Footer
+// ============================================================
+function renderFooter() {
+  const userHols = [...holidays].filter(iso => {
+    const d = TIMETABLE_DATA.find(x => x.iso === iso);
+    return d && !d.fixed;
+  }).length;
+  document.getElementById('footerMsg').innerHTML =
+    `<strong>${userHols}</strong> personal holiday${userHols !== 1 ? 's' : ''} selected &nbsp;·&nbsp; Fixed: <strong>18 Jun</strong>`;
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+function toggleDay(iso) {
+  if (holidays.has(iso)) holidays.delete(iso);
+  else holidays.add(iso);
+  render();
+}
+
+function resetHolidays() {
+  holidays.clear();
+  TIMETABLE_DATA.filter(d => d.fixed).forEach(d => holidays.add(d.iso));
+  render();
+}
+
+function exportSummary() {
+  const fut  = futureSessions();
+  const proj = projectAttendance(fut);
+  const names = { AN:'Anatomy', BC:'Biochemistry', PY:'Physiology' };
+  const lines = [
+    'MBBS Phase 1 — Holiday Planner Export',
+    `Generated: ${new Date().toLocaleDateString('en-IN')}`,
+    `Attendance as of: 7 Jun 2026`,
+    '',
+    '=== SELECTED HOLIDAYS ===',
+  ];
+
+  const userHols = [...holidays].filter(iso => {
+    const d = TIMETABLE_DATA.find(x => x.iso === iso);
+    return d && !d.fixed;
+  });
+
+  if (userHols.length === 0) {
+    lines.push('No personal holidays selected.');
+  } else {
+    userHols.sort().forEach(iso => {
+      const d = TIMETABLE_DATA.find(x => x.iso === iso);
+      const tot = d.AN.ECE+d.AN.L+d.AN.SGT + d.BC.ECE+d.BC.L+d.BC.SGT + d.PY.ECE+d.PY.L+d.PY.SGT;
+      lines.push(`• ${d.date} (${d.day}) — ${tot} classes missed`);
+    });
+  }
+  lines.push('• 18 Jun (Thu) — Fixed college holiday', '');
+
+  lines.push('=== ATTENDANCE PROJECTION ===');
+  ['AN','BC','PY'].forEach(s => {
+    lines.push(`\n${names[s]}:`);
+    ['ECE','L','SGT'].forEach(t => {
+      const d = proj[s][t];
+      if (d.total === 0) { lines.push(`  ${t}: no classes`); return; }
+      const sym = d.buffer < 0 ? '⚠ SHORT' : d.buffer < 3 ? '~ TIGHT' : '✓ OK';
+      lines.push(`  ${t}: ${d.present}/${d.total} = ${d.pct}% (need ≥${d.req}%) | Buffer: ${d.buffer >= 0 ? '+' : ''}${d.buffer}  ${sym}`);
+    });
+  });
+
+  lines.push('\n=== CURRENT ATTENDANCE (as of 7 Jun 2026) ===');
+  ['AN','BC','PY'].forEach(s => {
+    lines.push(`\n${names[s]}:`);
+    ['ECE','L','SGT'].forEach(t => {
+      const c = CURRENT_ATT[s][t];
+      const pct = c.total > 0 ? Math.round(c.present/c.total*100) : 100;
+      lines.push(`  ${t}: ${c.present}/${c.total} = ${pct}%`);
+    });
+  });
+
+  const blob = new Blob([lines.join('\n')], { type:'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'holiday_plan.txt';
+  a.click();
+}
+
+// ============================================================
+// MAIN RENDER
+// ============================================================
+function render() {
+  const fut  = futureSessions();
+  const proj = projectAttendance(fut);
+  renderCurrentCards();   // static — doesn't change with holidays
+  renderProjStrip(proj);
+  renderCalendar();
+  renderDetailCards(proj);
+  renderFooter();
+}
+
+// On load, current cards never change so we render once outside
+render();
+</script>
+</body>
+</html>
