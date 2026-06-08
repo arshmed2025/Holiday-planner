@@ -181,10 +181,10 @@ button.primary:hover { background:#333; }
   </header>
 
   <div class="tip">
-    <strong>How to use:</strong> Click any day to toggle it as a holiday.
-    All three panels update live — current attendance, projection, and per-type bars.
-    Sundays are hidden. The 18 Jun college holiday is locked.
-    To update class counts, open this file in a text editor and edit <code>TIMETABLE_DATA</code>.
+    <strong>How to use:</strong> Click any day to toggle it as a holiday — all panels update live.
+    Sundays are hidden. The 18 Jun college holiday is locked automatically.
+    &nbsp;|&nbsp; <strong>For a friend:</strong> duplicate this file, then edit <code>CURRENT_ATT</code>
+    near the top of the &lt;script&gt; tag with their numbers. Each copy works independently.
   </div>
 
   <!-- Current attendance (as of 7 Jun 2026) -->
@@ -221,13 +221,28 @@ button.primary:hover { background:#333; }
 
 <script>
 // ============================================================
-// CONFIG — edit these when your attendance changes
+// HOW TO USE THIS FILE FOR MULTIPLE PEOPLE
+// ---------------------------------------------------------------
+// This file is for ONE person at a time.
+// To check a friend's attendance:
+//   1. Make a copy of this file (e.g. friend_name_planner.html)
+//   2. In the copy, find CURRENT_ATT below and replace all the
+//      numbers with your friend's attendance figures.
+//   3. Open the copy in a browser — everything works independently.
+//   4. Each person's file saves nothing; just re-open to plan fresh.
+// ============================================================
+
+// ============================================================
+// CONFIG — update these numbers when your attendance changes
+// ---------------------------------------------------------------
+// FORMAT: { present: classes_attended, total: classes_held }
+// All numbers are as of 7 Jun 2026 (before Week 35 starts).
+// L includes SDL — they count as the same type for attendance.
 // ============================================================
 const CURRENT_ATT = {
-  // Format: { present: X, total: Y }  (as of 7 Jun 2026)
   AN: {
     ECE: { present: 2,   total: 4   },
-    L:   { present: 169, total: 179 },  // L + SDL combined
+    L:   { present: 169, total: 179 },
     SGT: { present: 246, total: 260 },
   },
   BC: {
@@ -242,12 +257,16 @@ const CURRENT_ATT = {
   },
 };
 
+// ============================================================
+// THRESHOLDS — minimum attendance % required per session type
+// ============================================================
 const THRESHOLDS = {
-  ECE: 80,   // minimum % required
+  ECE: 80,
   L:   80,
   SGT: 85,
 };
 
+// ============================================================
 // ============================================================
 // TIMETABLE DATA — generated from Attendance_Analysis.xlsx
 // Each entry = one calendar day (Sundays are hidden).
@@ -314,7 +333,7 @@ const TIMETABLE_DATA = [
 ];
 
 // ============================================================
-// APP STATE
+// APP STATE — initialised after TIMETABLE_DATA so the reference is valid
 // ============================================================
 const holidays = new Set(
   TIMETABLE_DATA.filter(d => d.fixed).map(d => d.iso)
@@ -337,7 +356,8 @@ function allFutureSessions() {
 }
 
 // Count sessions on holiday days (user-selected + fixed).
-// These classes happen but you won't attend — so they add to total but NOT present.
+// These classes still happen but you won't attend —
+// so they add to the total (denominator) but NOT to present (numerator).
 function missedSessions() {
   const missed = { AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} };
   TIMETABLE_DATA.forEach(d => {
@@ -351,7 +371,7 @@ function missedSessions() {
 
 // Project final attendance:
 //   total   = current total   + ALL future scheduled classes
-//   present = current present + ALL future classes − missed (holiday) classes
+//   present = current present + ALL future classes - missed (holiday) classes
 function projectAttendance() {
   const all    = allFutureSessions();
   const missed = missedSessions();
@@ -360,8 +380,8 @@ function projectAttendance() {
     proj[s] = {};
     ['ECE','L','SGT'].forEach(t => {
       const cur        = CURRENT_ATT[s][t];
-      const newTotal   = cur.total   + all[s][t];          // denominator always grows by all scheduled
-      const newPresent = cur.present + all[s][t] - missed[s][t]; // numerator loses missed classes
+      const newTotal   = cur.total   + all[s][t];
+      const newPresent = cur.present + all[s][t] - missed[s][t];
       const needed     = Math.ceil(newTotal * THRESHOLDS[t] / 100);
       const buffer     = newPresent - needed;
       const pct        = newTotal > 0 ? Math.round(newPresent / newTotal * 100) : 100;
@@ -370,14 +390,13 @@ function projectAttendance() {
   });
   return proj;
 }
-
 // Status class based on buffer
 function status(buffer) {
   return buffer < 0 ? 'danger' : buffer < 3 ? 'warn' : 'safe';
 }
 
 // ============================================================
-// RENDER: Current attendance cards (as of 7 Jun 2026 — static)
+// RENDER: Current attendance cards (static per user)
 // Shows per-type bars + overall combined % + SHORT alerts
 // ============================================================
 function renderCurrentCards() {
@@ -386,47 +405,34 @@ function renderCurrentCards() {
   let html = '';
 
   ['AN','BC','PY'].forEach(s => {
-    // Overall combined % = sum of all presents / sum of all totals
     const totalPresent = ['ECE','L','SGT'].reduce((a,t) => a + CURRENT_ATT[s][t].present, 0);
     const totalClasses = ['ECE','L','SGT'].reduce((a,t) => a + CURRENT_ATT[s][t].total,   0);
     const overallPct   = totalClasses > 0 ? Math.round(totalPresent / totalClasses * 100) : 100;
-
-    // Collect which types are SHORT right now
-    const shortTypes = ['ECE','L','SGT'].filter(t => {
-      const { present, total } = CURRENT_ATT[s][t];
-      return total > 0 && Math.round(present / total * 100) < THRESHOLDS[t];
-    });
-
-    const overallCls = overallPct >= 85 ? 'safe' : overallPct >= 80 ? 'warn' : 'danger';
+    const overallCls   = overallPct >= 85 ? 'safe' : overallPct >= 80 ? 'warn' : 'danger';
 
     html += `<div class="curr-card">
       <div class="curr-title ${s.toLowerCase()}">${names[s]}</div>`;
 
     ['ECE','L','SGT'].forEach(t => {
       const { present, total } = CURRENT_ATT[s][t];
-      const req = THRESHOLDS[t];
-      const pct = total > 0 ? Math.round(present / total * 100) : 100;
-      const cls = pct >= req ? 'safe' : pct >= req - 5 ? 'warn' : 'danger';
+      const req     = THRESHOLDS[t];
+      const pct     = total > 0 ? Math.round(present / total * 100) : 100;
+      const cls     = pct >= req ? 'safe' : pct >= req - 5 ? 'warn' : 'danger';
       const isShort = total > 0 && pct < req;
       html += `<div class="curr-row">
         <div class="curr-row-top">
-          <span class="curr-row-label">${labels[t]}${isShort ? ' <span style="color:var(--danger);font-weight:700">⚠ SHORT</span>' : ''}</span>
+          <span class="curr-row-label">${labels[t]}${isShort ? ' <span style="color:var(--danger);font-weight:700"> SHORT</span>' : ''}</span>
           <span class="curr-row-pct ${cls}">${pct}%</span>
         </div>
-        <div class="bar-track">
-          <div class="bar-fill ${cls}" style="width:${Math.min(100,pct)}%"></div>
-        </div>
-        <div class="curr-detail">${present}/${total} &nbsp;·&nbsp; need ≥${req}%${isShort ? ` &nbsp;·&nbsp; <span style="color:var(--danger)">${Math.ceil(total * req/100) - present} more needed</span>` : ''}</div>
+        <div class="bar-track"><div class="bar-fill ${cls}" style="width:${Math.min(100,pct)}%"></div></div>
+        <div class="curr-detail">${present}/${total} &nbsp;need &gt;=${req}%${isShort ? ` &nbsp;<span style="color:var(--danger)">${Math.ceil(total * req/100) - present} more needed</span>` : ''}</div>
       </div>`;
     });
 
-    // Overall % total row
     html += `<div class="curr-total-row">
       <span class="curr-total-label">Overall (${totalPresent}/${totalClasses})</span>
       <span class="curr-total-pct ${overallCls}">${overallPct}%</span>
-    </div>`;
-
-    html += `</div>`;
+    </div></div>`;
   });
 
   document.getElementById('currentCards').innerHTML = html;
@@ -570,7 +576,6 @@ function renderDetailCards(proj) {
     const overallPct   = totalClasses > 0 ? Math.round(totalPresent / totalClasses * 100) : 100;
     const overallCls   = overallPct >= 85 ? 'safe' : overallPct >= 80 ? 'warn' : 'danger';
 
-    // Types that will be SHORT at end of term with current holiday plan
     const shortTypes = ['ECE','L','SGT'].filter(t => proj[s][t].total > 0 && proj[s][t].buffer < 0);
 
     html += `<div class="detail-card">
@@ -628,16 +633,13 @@ function renderDetailCards(proj) {
   document.getElementById('detailCards').innerHTML = html;
 }
 
-// ============================================================
-// RENDER: Footer
-// ============================================================
 function renderFooter() {
   const userHols = [...holidays].filter(iso => {
     const d = TIMETABLE_DATA.find(x => x.iso === iso);
     return d && !d.fixed;
   }).length;
   document.getElementById('footerMsg').innerHTML =
-    `<strong>${userHols}</strong> personal holiday${userHols !== 1 ? 's' : ''} selected &nbsp;·&nbsp; Fixed: <strong>18 Jun</strong>`;
+    `<strong>${userHols}</strong> personal holiday${userHols !== 1 ? 's' : ''} selected &nbsp;|&nbsp; Fixed: <strong>18 Jun</strong>`;
 }
 
 // ============================================================
@@ -656,57 +658,153 @@ function resetHolidays() {
 }
 
 function exportSummary() {
-  const proj = projectAttendance();
-  const names = { AN:'Anatomy', BC:'Biochemistry', PY:'Physiology' };
-  const lines = [
-    'MBBS Phase 1 — Holiday Planner Export',
-    `Generated: ${new Date().toLocaleDateString('en-IN')}`,
-    `Attendance as of: 7 Jun 2026`,
-    '',
-    '=== SELECTED HOLIDAYS ===',
-  ];
+  const proj   = projectAttendance();
+  const names  = { AN:'Anatomy', BC:'Biochemistry', PY:'Physiology' };
+  const labels = { ECE:'ECE', L:'L / SDL', SGT:'SGT' };
+  const colors = { AN:'#185FA5', BC:'#2d7a3e', PY:'#8b3a6e' };
 
-  const userHols = [...holidays].filter(iso => {
-    const d = TIMETABLE_DATA.find(x => x.iso === iso);
-    return d && !d.fixed;
-  });
+  const userHols = [...holidays]
+    .filter(iso => { const d = TIMETABLE_DATA.find(x => x.iso === iso); return d && !d.fixed; })
+    .sort();
 
+  // ---- Holiday rows HTML ----
+  let holRows = '';
   if (userHols.length === 0) {
-    lines.push('No personal holidays selected.');
+    holRows = `<tr><td colspan="3" style="color:#888;font-style:italic;">No personal holidays selected.</td></tr>`;
   } else {
-    userHols.sort().forEach(iso => {
-      const d = TIMETABLE_DATA.find(x => x.iso === iso);
+    userHols.forEach(iso => {
+      const d   = TIMETABLE_DATA.find(x => x.iso === iso);
       const tot = d.AN.ECE+d.AN.L+d.AN.SGT + d.BC.ECE+d.BC.L+d.BC.SGT + d.PY.ECE+d.PY.L+d.PY.SGT;
-      lines.push(`• ${d.date} (${d.day}) — ${tot} classes missed`);
+      const subjectList = [];
+      if (d.AN.ECE+d.AN.L+d.AN.SGT > 0) subjectList.push('AN');
+      if (d.BC.ECE+d.BC.L+d.BC.SGT > 0) subjectList.push('BC');
+      if (d.PY.ECE+d.PY.L+d.PY.SGT > 0) subjectList.push('PY');
+      holRows += `<tr>
+        <td><strong>${d.date}</strong> (${d.day})</td>
+        <td>${tot} class${tot !== 1 ? 'es' : ''} missed</td>
+        <td>${subjectList.join(', ')}</td>
+      </tr>`;
     });
   }
-  lines.push('• 18 Jun (Thu) — Fixed college holiday', '');
+  // fixed holiday
+  holRows += `<tr style="color:#555;font-style:italic;">
+    <td>18 Jun (Thu)</td><td colspan="2">Fixed college holiday</td>
+  </tr>`;
 
-  lines.push('=== ATTENDANCE PROJECTION ===');
+  // ---- Projection rows per subject ----
+  function statusColor(buf) { return buf < 0 ? '#b02020' : buf < 3 ? '#b06a00' : '#2d7a3e'; }
+  function statusTag(buf) {
+    if (buf < 0) return `<span style="background:#fde8e8;color:#b02020;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;">SHORT</span>`;
+    if (buf < 3) return `<span style="background:#fff0d0;color:#b06a00;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">TIGHT</span>`;
+    return `<span style="background:#d6f0dc;color:#2d7a3e;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600;">OK</span>`;
+  }
+
+  let projRows = '';
   ['AN','BC','PY'].forEach(s => {
-    lines.push(`\n${names[s]}:`);
+    const totalP = ['ECE','L','SGT'].reduce((a,t) => a + proj[s][t].present, 0);
+    const totalT = ['ECE','L','SGT'].reduce((a,t) => a + proj[s][t].total,   0);
+    const overPct = totalT > 0 ? Math.round(totalP / totalT * 100) : 100;
+    const overCls = statusColor(Math.min(...['ECE','L','SGT'].map(t => proj[s][t].buffer)));
+
+    projRows += `<tr>
+      <td rowspan="4" style="font-weight:700;color:${colors[s]};vertical-align:top;padding-top:10px;">${names[s]}</td>
+      <td colspan="4" style="font-size:12px;color:#555;padding-top:8px;border-top:1px solid #eee;">
+        Overall projected: <strong style="color:${overCls};font-size:15px;">${overPct}%</strong>
+        &nbsp;(${totalP}/${totalT})
+      </td>
+    </tr>`;
     ['ECE','L','SGT'].forEach(t => {
       const d = proj[s][t];
-      if (d.total === 0) { lines.push(`  ${t}: no classes`); return; }
-      const sym = d.buffer < 0 ? '⚠ SHORT' : d.buffer < 3 ? '~ TIGHT' : '✓ OK';
-      lines.push(`  ${t}: ${d.present}/${d.total} = ${d.pct}% (need ≥${d.req}%) | Buffer: ${d.buffer >= 0 ? '+' : ''}${d.buffer}  ${sym}`);
+      if (d.total === 0) {
+        projRows += `<tr><td style="color:#aaa;">${labels[t]}</td><td colspan="3" style="color:#aaa;">no classes</td></tr>`;
+        return;
+      }
+      const buf = d.buffer >= 0 ? `+${d.buffer}` : `${d.buffer}`;
+      projRows += `<tr>
+        <td style="padding-left:8px;color:#444;">${labels[t]}</td>
+        <td style="color:${statusColor(d.buffer)};font-weight:600;">${d.pct}%</td>
+        <td style="color:#555;">${d.present}/${d.total} &nbsp; (need &gt;=${d.req}%)</td>
+        <td>Buffer: <strong style="color:${statusColor(d.buffer)}">${buf}</strong> &nbsp; ${statusTag(d.buffer)}</td>
+      </tr>`;
     });
   });
 
-  lines.push('\n=== CURRENT ATTENDANCE (as of 7 Jun 2026) ===');
+  // ---- Current attendance rows ----
+  let currRows = '';
   ['AN','BC','PY'].forEach(s => {
-    lines.push(`\n${names[s]}:`);
+    const totalP = ['ECE','L','SGT'].reduce((a,t) => a + CURRENT_ATT[s][t].present, 0);
+    const totalT = ['ECE','L','SGT'].reduce((a,t) => a + CURRENT_ATT[s][t].total,   0);
+    const overPct = totalT > 0 ? Math.round(totalP/totalT*100) : 100;
+
+    currRows += `<tr>
+      <td rowspan="4" style="font-weight:700;color:${colors[s]};vertical-align:top;padding-top:10px;">${names[s]}</td>
+      <td colspan="3" style="font-size:12px;color:#555;padding-top:8px;border-top:1px solid #eee;">
+        Overall: <strong style="font-size:15px;">${overPct}%</strong> &nbsp;(${totalP}/${totalT})
+      </td>
+    </tr>`;
     ['ECE','L','SGT'].forEach(t => {
-      const c = CURRENT_ATT[s][t];
+      const c   = CURRENT_ATT[s][t];
       const pct = c.total > 0 ? Math.round(c.present/c.total*100) : 100;
-      lines.push(`  ${t}: ${c.present}/${c.total} = ${pct}%`);
+      const req = THRESHOLDS[t];
+      const isShort = pct < req;
+      currRows += `<tr>
+        <td style="padding-left:8px;color:#444;">${labels[t]}</td>
+        <td style="color:${isShort ? '#b02020' : '#2d7a3e'};font-weight:600;">${pct}%</td>
+        <td style="color:#555;">${c.present}/${c.total} &nbsp; (need &gt;=${req}%) &nbsp;
+          ${isShort ? `<span style="background:#fde8e8;color:#b02020;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700;">SHORT</span>` : ''}
+        </td>
+      </tr>`;
     });
   });
 
-  const blob = new Blob([lines.join('\n')], { type:'text/plain' });
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Holiday Plan Export</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #1a1a18; padding: 32px; max-width: 820px; margin: 0 auto; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .meta { color: #888; font-size: 12px; margin-bottom: 28px; }
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #555; border-bottom: 2px solid #eee; padding-bottom: 6px; margin: 28px 0 12px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  td, th { padding: 5px 8px; text-align: left; vertical-align: middle; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #888; border-bottom: 1px solid #ddd; }
+  tr:hover td { background: #fafafa; }
+  @media print { body { padding: 16px; } }
+</style>
+</head>
+<body>
+  <h1>MBBS Phase 1 - Holiday Planner</h1>
+  <div class="meta">Generated: ${dateStr} &nbsp;|&nbsp; Attendance current as of: 7 Jun 2026</div>
+
+  <h2>Selected Holidays</h2>
+  <table>
+    <thead><tr><th>Date</th><th>Impact</th><th>Subjects affected</th></tr></thead>
+    <tbody>${holRows}</tbody>
+  </table>
+
+  <h2>Projected Attendance (end of term)</h2>
+  <table>
+    <thead><tr><th>Subject</th><th>Type</th><th>%</th><th>Count</th><th>Status</th></tr></thead>
+    <tbody>${projRows}</tbody>
+  </table>
+
+  <h2>Current Attendance (as of 7 Jun 2026)</h2>
+  <table>
+    <thead><tr><th>Subject</th><th>Type</th><th>%</th><th>Count</th></tr></thead>
+    <tbody>${currRows}</tbody>
+  </table>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'holiday_plan.txt';
+  a.download = 'holiday_plan.html';
   a.click();
 }
 
