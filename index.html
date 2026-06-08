@@ -324,36 +324,47 @@ const holidays = new Set(
 // CORE CALCULATIONS
 // ============================================================
 
-// Count future sessions on non-holiday days
-function futureSessions() {
-  const fut = {
-    AN:{ECE:0,L:0,SGT:0},
-    BC:{ECE:0,L:0,SGT:0},
-    PY:{ECE:0,L:0,SGT:0},
-  };
+// Count ALL scheduled future sessions (regardless of holidays).
+// This is the full denominator addition for the term.
+function allFutureSessions() {
+  const all = { AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} };
   TIMETABLE_DATA.forEach(d => {
-    if (holidays.has(d.iso)) return;
     ['AN','BC','PY'].forEach(s => {
-      ['ECE','L','SGT'].forEach(t => {
-        fut[s][t] += d[s][t];
-      });
+      ['ECE','L','SGT'].forEach(t => { all[s][t] += d[s][t]; });
     });
   });
-  return fut;
+  return all;
 }
 
-// Project final attendance assuming student attends all remaining non-holiday sessions
-function projectAttendance(fut) {
-  const proj = {};
+// Count sessions on holiday days (user-selected + fixed).
+// These classes happen but you won't attend — so they add to total but NOT present.
+function missedSessions() {
+  const missed = { AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} };
+  TIMETABLE_DATA.forEach(d => {
+    if (!holidays.has(d.iso)) return;
+    ['AN','BC','PY'].forEach(s => {
+      ['ECE','L','SGT'].forEach(t => { missed[s][t] += d[s][t]; });
+    });
+  });
+  return missed;
+}
+
+// Project final attendance:
+//   total   = current total   + ALL future scheduled classes
+//   present = current present + ALL future classes − missed (holiday) classes
+function projectAttendance() {
+  const all    = allFutureSessions();
+  const missed = missedSessions();
+  const proj   = {};
   ['AN','BC','PY'].forEach(s => {
     proj[s] = {};
     ['ECE','L','SGT'].forEach(t => {
-      const cur  = CURRENT_ATT[s][t];
-      const newTotal   = cur.total   + fut[s][t];
-      const newPresent = cur.present + fut[s][t];  // assumes attending all future
-      const needed  = Math.ceil(newTotal * THRESHOLDS[t] / 100);
-      const buffer  = newPresent - needed;
-      const pct     = newTotal > 0 ? Math.round(newPresent / newTotal * 100) : 100;
+      const cur        = CURRENT_ATT[s][t];
+      const newTotal   = cur.total   + all[s][t];          // denominator always grows by all scheduled
+      const newPresent = cur.present + all[s][t] - missed[s][t]; // numerator loses missed classes
+      const needed     = Math.ceil(newTotal * THRESHOLDS[t] / 100);
+      const buffer     = newPresent - needed;
+      const pct        = newTotal > 0 ? Math.round(newPresent / newTotal * 100) : 100;
       proj[s][t] = { total:newTotal, present:newPresent, needed, buffer, pct, req:THRESHOLDS[t] };
     });
   });
@@ -645,8 +656,7 @@ function resetHolidays() {
 }
 
 function exportSummary() {
-  const fut  = futureSessions();
-  const proj = projectAttendance(fut);
+  const proj = projectAttendance();
   const names = { AN:'Anatomy', BC:'Biochemistry', PY:'Physiology' };
   const lines = [
     'MBBS Phase 1 — Holiday Planner Export',
@@ -704,9 +714,8 @@ function exportSummary() {
 // MAIN RENDER
 // ============================================================
 function render() {
-  const fut  = futureSessions();
-  const proj = projectAttendance(fut);
-  renderCurrentCards();   // static — doesn't change with holidays
+  const proj = projectAttendance();
+  renderCurrentCards();
   renderProjStrip(proj);
   renderCalendar();
   renderDetailCards(proj);
