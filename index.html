@@ -473,6 +473,7 @@ button.primary:hover { background: #333; }
     <strong>How to use:</strong> Enter attendance figures and a reference date (DD-MM-YY).
     Days before that date are greyed out and excluded from projections — only future sessions count.
     Click any future day to mark it as a holiday.
+    &nbsp;|&nbsp; <strong>For a friend:</strong> update all numbers to theirs.
   </div>
 
   <!-- Editable attendance input panel -->
@@ -603,50 +604,70 @@ const THRESHOLDS = {
 // Set "fixed: true" to lock a day as a non-toggleable holiday.
 // ============================================================
 const TIMETABLE_DATA = [
-{ date:"8 Jun", day:"Mon", iso:"2026-06-08", week:"Week 35", fixed:false, AN:{ECE:0,L:0,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:1,L:0,SGT:2} },
-{ date:"9 Jun", day:"Tue", iso:"2026-06-09", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:1,L:0,SGT:2} },
-{ date:"10 Jun", day:"Wed", iso:"2026-06-10", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"11 Jun", day:"Thu", iso:"2026-06-11", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:2,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
-{ date:"12 Jun", day:"Fri", iso:"2026-06-12", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:1} },
-{ date:"13 Jun", day:"Sat", iso:"2026-06-13", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:2}, PY:{ECE:0,L:1,SGT:0} },
-{ date:"15 Jun", day:"Mon", iso:"2026-06-15", week:"Week 36", fixed:false, AN:{ECE:1,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"16 Jun", day:"Tue", iso:"2026-06-16", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"17 Jun", day:"Wed", iso:"2026-06-17", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"18 Jun", day:"Thu", iso:"2026-06-18", week:"Week 36", fixed:true, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} },
-{ date:"19 Jun", day:"Fri", iso:"2026-06-19", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"20 Jun", day:"Sat", iso:"2026-06-20", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:0} },
-{ date:"22 Jun", day:"Mon", iso:"2026-06-22", week:"Week 37", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"23 Jun", day:"Tue", iso:"2026-06-23", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
-{ date:"24 Jun", day:"Wed", iso:"2026-06-24", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:4}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} },
-{ date:"25 Jun", day:"Thu", iso:"2026-06-25", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"26 Jun", day:"Fri", iso:"2026-06-26", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:0} },
-{ date:"27 Jun", day:"Sat", iso:"2026-06-27", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:2}, PY:{ECE:0,L:1,SGT:0} },
-{ date:"29 Jun", day:"Mon", iso:"2026-06-29", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
-{ date:"30 Jun", day:"Tue", iso:"2026-06-30", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"1 Jul", day:"Wed", iso:"2026-07-01", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
-{ date:"2 Jul", day:"Thu", iso:"2026-07-02", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:1}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"3 Jul", day:"Fri", iso:"2026-07-03", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:5}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} },
-{ date:"4 Jul", day:"Sat", iso:"2026-07-04", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
-{ date:"6 Jul", day:"Mon", iso:"2026-07-06", week:"Week 39", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"7 Jul", day:"Tue", iso:"2026-07-07", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"8 Jul", day:"Wed", iso:"2026-07-08", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"9 Jul", day:"Thu", iso:"2026-07-09", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:0,SGT:2} },
-{ date:"10 Jul", day:"Fri", iso:"2026-07-10", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
-{ date:"11 Jul", day:"Sat", iso:"2026-07-11", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
-{ date:"13 Jul", day:"Mon", iso:"2026-07-13", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
-{ date:"14 Jul", day:"Tue", iso:"2026-07-14", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
-{ date:"15 Jul", day:"Wed", iso:"2026-07-15", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"16 Jul", day:"Thu", iso:"2026-07-16", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:1,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
-{ date:"17 Jul", day:"Fri", iso:"2026-07-17", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
-{ date:"18 Jul", day:"Sat", iso:"2026-07-18", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
-{ date:"20 Jul", day:"Mon", iso:"2026-07-20", week:"Week 41", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
-{ date:"21 Jul", day:"Tue", iso:"2026-07-21", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"22 Jul", day:"Wed", iso:"2026-07-22", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"23 Jul", day:"Thu", iso:"2026-07-23", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:2} },
-{ date:"24 Jul", day:"Fri", iso:"2026-07-24", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:6}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
-{ date:"25 Jul", day:"Sat", iso:"2026-07-25", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:0,SGT:1} },
+  // --- Week 35 (8–13 Jun) ---
+  // Columns: AN{ECE, L (includes SDL), SGT}  BC{ECE, L, SGT}  PY{ECE, L (includes SDL), SGT}
+  { date:"8 Jun",  day:"Mon", iso:"2026-06-08", week:"Week 35", fixed:false, AN:{ECE:0,L:0,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:1,L:0,SGT:2} },
+  { date:"9 Jun",  day:"Tue", iso:"2026-06-09", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"10 Jun", day:"Wed", iso:"2026-06-10", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"11 Jun", day:"Thu", iso:"2026-06-11", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"12 Jun", day:"Fri", iso:"2026-06-12", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"13 Jun", day:"Sat", iso:"2026-06-13", week:"Week 35", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:1,SGT:2}, PY:{ECE:0,L:0,SGT:0} },
+
+  // --- Week 36 (15–20 Jun) ---
+  { date:"15 Jun", day:"Mon", iso:"2026-06-15", week:"Week 36", fixed:false, AN:{ECE:1,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"16 Jun", day:"Tue", iso:"2026-06-16", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"17 Jun", day:"Wed", iso:"2026-06-17", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"18 Jun", day:"Thu", iso:"2026-06-18", week:"Week 36", fixed:true,  AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} },
+  { date:"19 Jun", day:"Fri", iso:"2026-06-19", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"20 Jun", day:"Sat", iso:"2026-06-20", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:0,SGT:0} },
+
+  // --- Week 37 (22–27 Jun) ---
+  { date:"22 Jun", day:"Mon", iso:"2026-06-22", week:"Week 37", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"23 Jun", day:"Tue", iso:"2026-06-23", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
+  { date:"24 Jun", day:"Wed", iso:"2026-06-24", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:4}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"25 Jun", day:"Thu", iso:"2026-06-25", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"26 Jun", day:"Fri", iso:"2026-06-26", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:0} },
+  { date:"27 Jun", day:"Sat", iso:"2026-06-27", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:3}, BC:{ECE:0,L:1,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
+
+  // --- Week 38 (29 Jun – 4 Jul) ---
+  { date:"29 Jun", day:"Mon", iso:"2026-06-29", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"30 Jun", day:"Tue", iso:"2026-06-30", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"1 Jul",  day:"Wed", iso:"2026-07-01", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
+  { date:"2 Jul",  day:"Thu", iso:"2026-07-02", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:1}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"3 Jul",  day:"Fri", iso:"2026-07-03", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:5}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} },
+  { date:"4 Jul",  day:"Sat", iso:"2026-07-04", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
+
+  // --- Week 39 (6–11 Jul) ---
+  { date:"6 Jul",  day:"Mon", iso:"2026-07-06", week:"Week 39", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"7 Jul",  day:"Tue", iso:"2026-07-07", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"8 Jul",  day:"Wed", iso:"2026-07-08", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"9 Jul",  day:"Thu", iso:"2026-07-09", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"10 Jul", day:"Fri", iso:"2026-07-10", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"11 Jul", day:"Sat", iso:"2026-07-11", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+
+  // --- Week 40 (13–18 Jul) ---
+  { date:"13 Jul", day:"Mon", iso:"2026-07-13", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
+  { date:"14 Jul", day:"Tue", iso:"2026-07-14", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"15 Jul", day:"Wed", iso:"2026-07-15", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:2,SGT:0} },
+  { date:"16 Jul", day:"Thu", iso:"2026-07-16", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:1,L:0,SGT:0}, PY:{ECE:1,L:0,SGT:3} },
+  { date:"17 Jul", day:"Fri", iso:"2026-07-17", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"18 Jul", day:"Sat", iso:"2026-07-18", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
+
+  // --- Week 41 (20–25 Jul) ---
+  { date:"20 Jul", day:"Mon", iso:"2026-07-20", week:"Week 41", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
+  { date:"21 Jul", day:"Tue", iso:"2026-07-21", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"22 Jul", day:"Wed", iso:"2026-07-22", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"23 Jul", day:"Thu", iso:"2026-07-23", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"24 Jul", day:"Fri", iso:"2026-07-24", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:6}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"25 Jul", day:"Sat", iso:"2026-07-25", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:0} },
 ];
 
+// ============================================================
+// APP STATE — initialised after TIMETABLE_DATA so the reference is valid
+// ============================================================
+const holidays = new Set(
+  TIMETABLE_DATA.filter(d => d.fixed).map(d => d.iso)
+);
 
 // ============================================================
 // CORE CALCULATIONS
@@ -1277,3 +1298,4 @@ render();
 </script>
 </body>
 </html>
+
