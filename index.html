@@ -163,6 +163,30 @@ button.primary:hover { background:#333; }
 
 .divider { height:1px; background:var(--border); margin:1.8rem 0; }
 
+/* ---- Attendance input panel ---- */
+.att-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; margin-bottom:1.6rem; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+.att-panel-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+.att-panel-title { font-size:13px; font-weight:600; color:var(--text); }
+.att-panel-title span { font-size:11px; font-weight:400; color:var(--muted); margin-left:6px; }
+.att-date-row { display:flex; align-items:center; gap:8px; }
+.att-date-label { font-size:12px; color:var(--muted); }
+.att-date-input { font-family:'DM Sans',sans-serif; font-size:12px; padding:4px 8px; border:1px solid var(--border-str); border-radius:var(--radius-sm); background:var(--surface); color:var(--text); }
+.att-table { width:100%; border-collapse:collapse; }
+.att-table th { font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--faint); text-align:left; padding:4px 6px 6px; border-bottom:1px solid var(--border); }
+.att-table th.subj { min-width:90px; }
+.att-subj-label { font-size:12px; font-weight:600; }
+.att-subj-label.an { color:var(--an-dark); } .att-subj-label.bc { color:var(--bc-dark); } .att-subj-label.py { color:var(--py-dark); }
+.att-table td { padding:5px 6px; vertical-align:middle; }
+.att-table tr:not(:last-child) td { border-bottom:1px solid var(--border); }
+.att-frac { display:flex; align-items:center; gap:4px; }
+.att-input { width:52px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; text-align:center; padding:4px 5px; border:1px solid var(--border-str); border-radius:var(--radius-sm); background:var(--bg); color:var(--text); transition:border-color .15s, background .15s; }
+.att-input:focus { outline:none; border-color:var(--an-dark); background:var(--surface); }
+.att-input.danger { border-color:var(--danger); background:#fff5f5; }
+.att-slash { font-size:13px; color:var(--faint); }
+.att-pct { font-size:12px; font-weight:600; min-width:36px; text-align:right; }
+.att-pct.safe { color:var(--safe); } .att-pct.warn { color:var(--warn); } .att-pct.danger { color:var(--danger); }
+.att-req { font-size:10px; color:var(--faint); padding-left:4px; }
+
 @media (max-width:700px) {
   .days-grid { grid-template-columns:repeat(3,1fr); }
   .current-grid, .proj-strip, .detail-grid { grid-template-columns:1fr; }
@@ -181,12 +205,34 @@ button.primary:hover { background:#333; }
   </header>
 
   <div class="tip">
-    <strong>How to use:</strong> Click any day to toggle it as a holiday — all panels update live.
-    Sundays are hidden. The 18 Jun college holiday is locked automatically.
+    <strong>How to use:</strong> Enter your attendance figures below, then click any day to mark it as a holiday — all panels update live.
+    &nbsp;|&nbsp; <strong>For a friend:</strong> update the numbers to theirs. Each person's figures are independent per browser session.
   </div>
 
-  <!-- Current attendance (as of 7 Jun 2026) -->
-  <div class="section-label">Current attendance — as of 7 Jun 2026 &nbsp;<span style="font-weight:400;color:var(--faint)">(before week 35 starts)</span></div>
+  <!-- Editable attendance input panel -->
+  <div class="att-panel">
+    <div class="att-panel-header">
+      <div class="att-panel-title">Enter your attendance &nbsp;<span>— present / total classes held</span></div>
+      <div class="att-date-row">
+        <label class="att-date-label" for="refDate">Data as of:</label>
+        <input class="att-date-input" type="text" id="refDate" value="7 Jun 2026" placeholder="e.g. 11 Jun 2026" oninput="updateRefDate()">
+      </div>
+    </div>
+    <table class="att-table">
+      <thead>
+        <tr>
+          <th class="subj">Subject</th>
+          <th>ECE &nbsp;<span style="font-weight:400">(need ≥80%)</span></th>
+          <th>L / SDL &nbsp;<span style="font-weight:400">(need ≥80%)</span></th>
+          <th>SGT &nbsp;<span style="font-weight:400">(need ≥85%)</span></th>
+        </tr>
+      </thead>
+      <tbody id="attTableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Current attendance summary (rendered from inputs) -->
+  <div class="section-label" id="currLabel">Current attendance &nbsp;<span style="font-weight:400;color:var(--faint)" id="currLabelDate"></span></div>
   <div class="current-grid" id="currentCards"></div>
 
   <!-- Projection summary after selected holidays -->
@@ -231,11 +277,8 @@ button.primary:hover { background:#333; }
 // ============================================================
 
 // ============================================================
-// CONFIG — update these numbers when your attendance changes
-// ---------------------------------------------------------------
-// FORMAT: { present: classes_attended, total: classes_held }
-// All numbers are as of 7 Jun 2026 (before Week 35 starts).
-// L includes SDL — they count as the same type for attendance.
+// LIVE ATTENDANCE — reads from input fields at runtime.
+// CURRENT_ATT below is only the initial default seed.
 // ============================================================
 const CURRENT_ATT = {
   AN: {
@@ -254,6 +297,26 @@ const CURRENT_ATT = {
     SGT: { present: 156, total: 160 },
   },
 };
+
+// Read current attendance from input fields (falls back to CURRENT_ATT if fields not yet rendered)
+function att() {
+  const out = { AN:{}, BC:{}, PY:{} };
+  ['AN','BC','PY'].forEach(s => {
+    ['ECE','L','SGT'].forEach(t => {
+      const pEl = document.getElementById(`inp_${s}_${t}_p`);
+      const tEl = document.getElementById(`inp_${s}_${t}_t`);
+      if (pEl && tEl) {
+        out[s][t] = {
+          present: Math.max(0, parseInt(pEl.value) || 0),
+          total:   Math.max(0, parseInt(tEl.value) || 0),
+        };
+      } else {
+        out[s][t] = { ...CURRENT_ATT[s][t] };
+      }
+    });
+  });
+  return out;
+}
 
 // ============================================================
 // THRESHOLDS — minimum attendance % required per session type
@@ -274,60 +337,61 @@ const THRESHOLDS = {
 // ============================================================
 const TIMETABLE_DATA = [
   // --- Week 35 (8–13 Jun) ---
-  { date:"8 Jun",  day:"Mon", iso:"2026-06-08", week:"Week 35", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:1,L:0,SGT:1} },
-  { date:"9 Jun",  day:"Tue", iso:"2026-06-09", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:1,L:0,SGT:1} },
-  { date:"10 Jun", day:"Wed", iso:"2026-06-10", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"11 Jun", day:"Thu", iso:"2026-06-11", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:2,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"12 Jun", day:"Fri", iso:"2026-06-12", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:1} },
-  { date:"13 Jun", day:"Sat", iso:"2026-06-13", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:1}, PY:{ECE:0,L:1,SGT:0} },
+  // Columns: AN{ECE, L (includes SDL), SGT}  BC{ECE, L, SGT}  PY{ECE, L (includes SDL), SGT}
+  { date:"8 Jun",  day:"Mon", iso:"2026-06-08", week:"Week 35", fixed:false, AN:{ECE:0,L:0,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:1,L:0,SGT:2} },
+  { date:"9 Jun",  day:"Tue", iso:"2026-06-09", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"10 Jun", day:"Wed", iso:"2026-06-10", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"11 Jun", day:"Thu", iso:"2026-06-11", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"12 Jun", day:"Fri", iso:"2026-06-12", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"13 Jun", day:"Sat", iso:"2026-06-13", week:"Week 35", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:1,SGT:2}, PY:{ECE:0,L:0,SGT:0} },
 
   // --- Week 36 (15–20 Jun) ---
-  { date:"15 Jun", day:"Mon", iso:"2026-06-15", week:"Week 36", fixed:false, AN:{ECE:1,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"16 Jun", day:"Tue", iso:"2026-06-16", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"17 Jun", day:"Wed", iso:"2026-06-17", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
+  { date:"15 Jun", day:"Mon", iso:"2026-06-15", week:"Week 36", fixed:false, AN:{ECE:1,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"16 Jun", day:"Tue", iso:"2026-06-16", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"17 Jun", day:"Wed", iso:"2026-06-17", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
   { date:"18 Jun", day:"Thu", iso:"2026-06-18", week:"Week 36", fixed:true,  AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} },
-  { date:"19 Jun", day:"Fri", iso:"2026-06-19", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"20 Jun", day:"Sat", iso:"2026-06-20", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:1,SGT:0} },
+  { date:"19 Jun", day:"Fri", iso:"2026-06-19", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"20 Jun", day:"Sat", iso:"2026-06-20", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:0,SGT:0} },
 
   // --- Week 37 (22–27 Jun) ---
-  { date:"22 Jun", day:"Mon", iso:"2026-06-22", week:"Week 37", fixed:false, AN:{ECE:0,L:2,SGT:1}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"23 Jun", day:"Tue", iso:"2026-06-23", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"24 Jun", day:"Wed", iso:"2026-06-24", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} },
-  { date:"25 Jun", day:"Thu", iso:"2026-06-25", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"26 Jun", day:"Fri", iso:"2026-06-26", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:1,SGT:0} },
-  { date:"27 Jun", day:"Sat", iso:"2026-06-27", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:1,SGT:1}, PY:{ECE:0,L:1,SGT:0} },
+  { date:"22 Jun", day:"Mon", iso:"2026-06-22", week:"Week 37", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"23 Jun", day:"Tue", iso:"2026-06-23", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
+  { date:"24 Jun", day:"Wed", iso:"2026-06-24", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:4}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"25 Jun", day:"Thu", iso:"2026-06-25", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"26 Jun", day:"Fri", iso:"2026-06-26", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:0} },
+  { date:"27 Jun", day:"Sat", iso:"2026-06-27", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:3}, BC:{ECE:0,L:1,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
 
   // --- Week 38 (29 Jun – 4 Jul) ---
-  { date:"29 Jun", day:"Mon", iso:"2026-06-29", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
-  { date:"30 Jun", day:"Tue", iso:"2026-06-30", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"1 Jul",  day:"Wed", iso:"2026-07-01", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
-  { date:"2 Jul",  day:"Thu", iso:"2026-07-02", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:1}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"3 Jul",  day:"Fri", iso:"2026-07-03", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} },
-  { date:"4 Jul",  day:"Sat", iso:"2026-07-04", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"29 Jun", day:"Mon", iso:"2026-06-29", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"30 Jun", day:"Tue", iso:"2026-06-30", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"1 Jul",  day:"Wed", iso:"2026-07-01", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
+  { date:"2 Jul",  day:"Thu", iso:"2026-07-02", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:1}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"3 Jul",  day:"Fri", iso:"2026-07-03", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:5}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} },
+  { date:"4 Jul",  day:"Sat", iso:"2026-07-04", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
 
   // --- Week 39 (6–11 Jul) ---
-  { date:"6 Jul",  day:"Mon", iso:"2026-07-06", week:"Week 39", fixed:false, AN:{ECE:0,L:2,SGT:1}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"7 Jul",  day:"Tue", iso:"2026-07-07", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"8 Jul",  day:"Wed", iso:"2026-07-08", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"9 Jul",  day:"Thu", iso:"2026-07-09", week:"Week 39", fixed:false, AN:{ECE:0,L:0,SGT:1}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
-  { date:"10 Jul", day:"Fri", iso:"2026-07-10", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
-  { date:"11 Jul", day:"Sat", iso:"2026-07-11", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"6 Jul",  day:"Mon", iso:"2026-07-06", week:"Week 39", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"7 Jul",  day:"Tue", iso:"2026-07-07", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"8 Jul",  day:"Wed", iso:"2026-07-08", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"9 Jul",  day:"Thu", iso:"2026-07-09", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"10 Jul", day:"Fri", iso:"2026-07-10", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"11 Jul", day:"Sat", iso:"2026-07-11", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
 
   // --- Week 40 (13–18 Jul) ---
-  { date:"13 Jul", day:"Mon", iso:"2026-07-13", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:1}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
-  { date:"14 Jul", day:"Tue", iso:"2026-07-14", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} },
-  { date:"15 Jul", day:"Wed", iso:"2026-07-15", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"16 Jul", day:"Thu", iso:"2026-07-16", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:1,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
-  { date:"17 Jul", day:"Fri", iso:"2026-07-17", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
-  { date:"18 Jul", day:"Sat", iso:"2026-07-18", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"13 Jul", day:"Mon", iso:"2026-07-13", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
+  { date:"14 Jul", day:"Tue", iso:"2026-07-14", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"15 Jul", day:"Wed", iso:"2026-07-15", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:2,SGT:0} },
+  { date:"16 Jul", day:"Thu", iso:"2026-07-16", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:1,L:0,SGT:0}, PY:{ECE:1,L:0,SGT:3} },
+  { date:"17 Jul", day:"Fri", iso:"2026-07-17", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"18 Jul", day:"Sat", iso:"2026-07-18", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
 
   // --- Week 41 (20–25 Jul) ---
-  { date:"20 Jul", day:"Mon", iso:"2026-07-20", week:"Week 41", fixed:false, AN:{ECE:0,L:2,SGT:1}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
-  { date:"21 Jul", day:"Tue", iso:"2026-07-21", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"22 Jul", day:"Wed", iso:"2026-07-22", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:1}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"23 Jul", day:"Thu", iso:"2026-07-23", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:1,SGT:1} },
-  { date:"24 Jul", day:"Fri", iso:"2026-07-24", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
-  { date:"25 Jul", day:"Sat", iso:"2026-07-25", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:2}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"20 Jul", day:"Mon", iso:"2026-07-20", week:"Week 41", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
+  { date:"21 Jul", day:"Tue", iso:"2026-07-21", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"22 Jul", day:"Wed", iso:"2026-07-22", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"23 Jul", day:"Thu", iso:"2026-07-23", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"24 Jul", day:"Fri", iso:"2026-07-24", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:6}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"25 Jul", day:"Sat", iso:"2026-07-25", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:0} },
 ];
 
 // ============================================================
@@ -371,15 +435,16 @@ function missedSessions() {
 //   total   = current total   + ALL future scheduled classes
 //   present = current present + ALL future classes - missed (holiday) classes
 function projectAttendance() {
+  const cur    = att();
   const all    = allFutureSessions();
   const missed = missedSessions();
   const proj   = {};
   ['AN','BC','PY'].forEach(s => {
     proj[s] = {};
     ['ECE','L','SGT'].forEach(t => {
-      const cur        = CURRENT_ATT[s][t];
-      const newTotal   = cur.total   + all[s][t];
-      const newPresent = cur.present + all[s][t] - missed[s][t];
+      const c          = cur[s][t];
+      const newTotal   = c.total   + all[s][t];
+      const newPresent = c.present + all[s][t] - missed[s][t];
       const needed     = Math.ceil(newTotal * THRESHOLDS[t] / 100);
       const buffer     = newPresent - needed;
       const pct        = newTotal > 0 ? Math.round(newPresent / newTotal * 100) : 100;
@@ -394,17 +459,88 @@ function status(buffer) {
 }
 
 // ============================================================
+// RENDER: Attendance input table
+// ============================================================
+function renderAttInputs() {
+  const names  = { AN:'Anatomy', BC:'Biochemistry', PY:'Physiology' };
+  const colors = { AN:'var(--an-dark)', BC:'var(--bc-dark)', PY:'var(--py-dark)' };
+  let html = '';
+
+  ['AN','BC','PY'].forEach(s => {
+    html += `<tr><td><span class="att-subj-label ${s.toLowerCase()}">${names[s]}</span></td>`;
+    ['ECE','L','SGT'].forEach(t => {
+      const def = CURRENT_ATT[s][t];
+      const req = THRESHOLDS[t];
+      const pct = def.total > 0 ? Math.round(def.present / def.total * 100) : 100;
+      const cls = pct >= req ? 'safe' : 'danger';
+      html += `<td>
+        <div class="att-frac">
+          <input class="att-input" id="inp_${s}_${t}_p" type="number" min="0"
+            value="${def.present}" oninput="onAttInput()">
+          <span class="att-slash">/</span>
+          <input class="att-input" id="inp_${s}_${t}_t" type="number" min="0"
+            value="${def.total}" oninput="onAttInput()">
+          <span class="att-pct ${cls}" id="pct_${s}_${t}">${pct}%</span>
+        </div>
+        <div class="att-req">need &gt;=${req}%</div>
+      </td>`;
+    });
+    html += `</tr>`;
+  });
+
+  document.getElementById('attTableBody').innerHTML = html;
+}
+
+// Called on every input keystroke — update inline % and re-render all panels
+function onAttInput() {
+  // Update each inline % badge
+  ['AN','BC','PY'].forEach(s => {
+    ['ECE','L','SGT'].forEach(t => {
+      const p   = parseInt(document.getElementById(`inp_${s}_${t}_p`).value) || 0;
+      const tot = parseInt(document.getElementById(`inp_${s}_${t}_t`).value) || 0;
+      const req = THRESHOLDS[t];
+      const pct = tot > 0 ? Math.round(p / tot * 100) : 100;
+      const cls = pct >= req ? 'safe' : 'danger';
+      const el  = document.getElementById(`pct_${s}_${t}`);
+      el.textContent = `${pct}%`;
+      el.className   = `att-pct ${cls}`;
+      // Highlight input red if present > total (invalid)
+      document.getElementById(`inp_${s}_${t}_p`).className =
+        `att-input${p > tot && tot > 0 ? ' danger' : ''}`;
+    });
+  });
+  // Re-render all dependent panels
+  const proj = projectAttendance();
+  renderCurrentCards();
+  renderProjStrip(proj);
+  renderDetailCards(proj);
+  renderFooter();
+}
+
+// Update the "as of" date label when the user types in the date field
+function updateRefDate() {
+  const val = document.getElementById('refDate').value.trim();
+  const el  = document.getElementById('currLabelDate');
+  if (el) el.textContent = val ? `as of ${val}` : '';
+}
+
+// ============================================================
 // RENDER: Current attendance cards (static per user)
 // Shows per-type bars + overall combined % + SHORT alerts
 // ============================================================
 function renderCurrentCards() {
+  const cur    = att();
   const names  = { AN:'Anatomy', BC:'Biochemistry', PY:'Physiology' };
   const labels = { ECE:'ECE', L:'L / SDL', SGT:'SGT' };
+  // Update the "as of" label from the date input
+  const dateEl = document.getElementById('refDate');
+  const lblEl  = document.getElementById('currLabelDate');
+  if (lblEl && dateEl) lblEl.textContent = dateEl.value.trim() ? `as of ${dateEl.value.trim()}` : '';
   let html = '';
 
   ['AN','BC','PY'].forEach(s => {
-    const totalPresent = ['ECE','L','SGT'].reduce((a,t) => a + CURRENT_ATT[s][t].present, 0);
-    const totalClasses = ['ECE','L','SGT'].reduce((a,t) => a + CURRENT_ATT[s][t].total,   0);
+    const totalPresent = ['ECE','L','SGT'].reduce((a,t) => a + cur[s][t].present, 0);
+    const totalClasses = ['ECE','L','SGT'].reduce((a,t) => a + cur[s][t].total,   0);
     const overallPct   = totalClasses > 0 ? Math.round(totalPresent / totalClasses * 100) : 100;
     const overallCls   = overallPct >= 85 ? 'safe' : overallPct >= 80 ? 'warn' : 'danger';
 
@@ -412,7 +548,7 @@ function renderCurrentCards() {
       <div class="curr-title ${s.toLowerCase()}">${names[s]}</div>`;
 
     ['ECE','L','SGT'].forEach(t => {
-      const { present, total } = CURRENT_ATT[s][t];
+      const { present, total } = cur[s][t];
       const req     = THRESHOLDS[t];
       const pct     = total > 0 ? Math.round(present / total * 100) : 100;
       const cls     = pct >= req ? 'safe' : pct >= req - 5 ? 'warn' : 'danger';
@@ -657,6 +793,8 @@ function resetHolidays() {
 
 function exportSummary() {
   const proj   = projectAttendance();
+  const curAtt = att();
+  const refDate = (document.getElementById('refDate')?.value.trim()) || '7 Jun 2026';
   const names  = { AN:'Anatomy', BC:'Biochemistry', PY:'Physiology' };
   const labels = { ECE:'ECE', L:'L / SDL', SGT:'SGT' };
   const colors = { AN:'#185FA5', BC:'#2d7a3e', PY:'#8b3a6e' };
@@ -730,8 +868,8 @@ function exportSummary() {
   // ---- Current attendance rows ----
   let currRows = '';
   ['AN','BC','PY'].forEach(s => {
-    const totalP = ['ECE','L','SGT'].reduce((a,t) => a + CURRENT_ATT[s][t].present, 0);
-    const totalT = ['ECE','L','SGT'].reduce((a,t) => a + CURRENT_ATT[s][t].total,   0);
+    const totalP = ['ECE','L','SGT'].reduce((a,t) => a + curAtt[s][t].present, 0);
+    const totalT = ['ECE','L','SGT'].reduce((a,t) => a + curAtt[s][t].total,   0);
     const overPct = totalT > 0 ? Math.round(totalP/totalT*100) : 100;
 
     currRows += `<tr>
@@ -741,7 +879,7 @@ function exportSummary() {
       </td>
     </tr>`;
     ['ECE','L','SGT'].forEach(t => {
-      const c   = CURRENT_ATT[s][t];
+      const c   = curAtt[s][t];
       const pct = c.total > 0 ? Math.round(c.present/c.total*100) : 100;
       const req = THRESHOLDS[t];
       const isShort = pct < req;
@@ -777,7 +915,7 @@ function exportSummary() {
 </head>
 <body>
   <h1>MBBS Phase 1 - Holiday Planner</h1>
-  <div class="meta">Generated: ${dateStr} &nbsp;|&nbsp; Attendance current as of: 7 Jun 2026</div>
+  <div class="meta">Generated: ${dateStr} &nbsp;|&nbsp; Attendance current as of: ${refDate}</div>
 
   <h2>Selected Holidays</h2>
   <table>
@@ -791,7 +929,7 @@ function exportSummary() {
     <tbody>${projRows}</tbody>
   </table>
 
-  <h2>Current Attendance (as of 7 Jun 2026)</h2>
+  <h2>Current Attendance (as of ${refDate})</h2>
   <table>
     <thead><tr><th>Subject</th><th>Type</th><th>%</th><th>Count</th></tr></thead>
     <tbody>${currRows}</tbody>
@@ -807,9 +945,44 @@ function exportSummary() {
 }
 
 // ============================================================
+// RENDER: Footer
+// ============================================================
+function renderFooter() {
+  const userHols = [...holidays].filter(iso => {
+    const d = TIMETABLE_DATA.find(x => x.iso === iso);
+    return d && !d.fixed;
+  }).length;
+  document.getElementById('footerMsg').innerHTML =
+    `<strong>${userHols}</strong> personal holiday${userHols !== 1 ? 's' : ''} selected &nbsp;|&nbsp; Fixed: <strong>18 Jun</strong>`;
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+function toggleDay(iso) {
+  if (holidays.has(iso)) holidays.delete(iso);
+  else holidays.add(iso);
+  render();
+}
+
+function resetHolidays() {
+  holidays.clear();
+  TIMETABLE_DATA.filter(d => d.fixed).forEach(d => holidays.add(d.iso));
+  render();
+}
+
+// ============================================================
 // MAIN RENDER
 // ============================================================
+let _inputsRendered = false;
+
 function render() {
+  // Render the editable input table only once on first load
+  if (!_inputsRendered) {
+    renderAttInputs();
+    updateRefDate();
+    _inputsRendered = true;
+  }
   const proj = projectAttendance();
   renderCurrentCards();
   renderProjStrip(proj);
@@ -818,7 +991,6 @@ function render() {
   renderFooter();
 }
 
-// On load, current cards never change so we render once outside
 render();
 </script>
 </body>
