@@ -613,8 +613,8 @@ const TIMETABLE_DATA = [
 { date:"16 Jun", day:"Tue", iso:"2026-06-16", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} }, 
 { date:"17 Jun", day:"Wed", iso:"2026-06-17", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} }, 
 { date:"18 Jun", day:"Thu", iso:"2026-06-18", week:"Week 36", fixed:true, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} }, 
-{ date:"19 Jun", day:"Fri", iso:"2026-06-19", week:"Week 36", fixed:true, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"20 Jun", day:"Sat", iso:"2026-06-20", week:"Week 36", fixed:true, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:0} }, 
+{ date:"19 Jun", day:"Fri", iso:"2026-06-19", week:"Week 36", fixed:true, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} }, 
+{ date:"20 Jun", day:"Sat", iso:"2026-06-20", week:"Week 36", fixed:true, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} }, 
 { date:"22 Jun", day:"Mon", iso:"2026-06-22", week:"Week 37", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} }, 
 { date:"23 Jun", day:"Tue", iso:"2026-06-23", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} }, 
 { date:"24 Jun", day:"Wed", iso:"2026-06-24", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:4}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} }, 
@@ -1061,7 +1061,7 @@ function renderFooter() {
     return d && !d.fixed;
   }).length;
   document.getElementById('footerMsg').innerHTML =
-    `<strong>${userHols}</strong> personal holiday${userHols !== 1 ? 's' : ''} selected &nbsp;|&nbsp; Fixed: <strong>18 Jun</strong>`;
+    `<strong>${userHols}</strong> personal holiday${userHols !== 1 ? 's' : ''} selected &nbsp;|&nbsp; Fixed: <strong>18 Jun, 19 Jun, 20 Jun</strong>`;
 }
 
 // ============================================================
