@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IDK | Holiday Planner</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <!-- ============================================================
   QUICK EDIT GUIDE
@@ -27,28 +29,37 @@
 
 <style>
 :root {
+  /* ---- Type ---- */
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'DM Sans', sans-serif;
+
+  /* ---- Accent (Claude coral) ---- */
+  --accent:      #c96442;
+  --accent-soft: #e9d3c5;
+
   /* ---- Subject colours ---- */
-  --an-dark:  #185FA5; --an-light: #deeaf7; --an-text:  #0c3d6e;
-  --bc-dark:  #2d7a3e; --bc-light: #d6f0dc; --bc-text:  #1a4d25;
-  --py-dark:  #8b3a6e; --py-light: #f5dced; --py-text:  #5a1f46;
+  --an-dark:  #2c5f8a; --an-light: #e6eef5; --an-text:  #1d4060;
+  --bc-dark:  #4a7a3a; --bc-light: #e9f0e2; --bc-text:  #2f4f25;
+  --py-dark:  #9a4d3f; --py-light: #f6e6e0; --py-text:  #6b3026;
 
   /* ---- Status ---- */
-  --safe:   #2d7a3e;
-  --warn:   #b06a00;
-  --danger: #b02020;
+  --safe:   #4a7a3a;
+  --warn:   #b07628;
+  --danger: #b0432f;
 
-  /* ---- UI ---- */
-  --bg:         #f5f3ee;
+  /* ---- UI neutrals (soft off-white) ---- */
+  --bg:         #f8f8f6;
   --surface:    #ffffff;
-  --surface2:   #f0ede6;
-  --border:     rgba(0,0,0,.09);
-  --border-str: rgba(0,0,0,.17);
-  --text:       #1a1a18;
-  --muted:      #706e66;
-  --faint:      #a09e96;
-  --radius:     10px;
-  --radius-sm:  6px;
-  --shadow:     0 2px 8px rgba(0,0,0,.07), 0 0 0 1px rgba(0,0,0,.05);
+  --surface2:   #f1f1ee;
+  --border:     rgba(40,38,32,.09);
+  --border-str: rgba(40,38,32,.16);
+  --text:       #26241f;
+  --muted:      #6b675e;
+  --faint:      #a3a097;
+  --radius:     14px;
+  --radius-sm:  9px;
+  --shadow:     0 1px 2px rgba(40,38,32,.04), 0 6px 20px rgba(40,38,32,.07);
+  --shadow-sm:  0 1px 2px rgba(40,38,32,.04), 0 2px 8px rgba(40,38,32,.05);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -56,18 +67,43 @@
 html { -webkit-text-size-adjust: 100%; }
 
 body {
-  font-family: 'DM Sans', sans-serif;
-  background: var(--bg);
+  font-family: var(--font-body);
+  background:
+    radial-gradient(1200px 600px at 100% -10%, #fcfcfb 0%, transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--text);
   font-size: 14px;
   line-height: 1.5;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* tabular figures everywhere numbers appear */
+.curr-row-pct, .curr-total-pct, .proj-val, .proj-total-pct, .type-pct,
+.att-pct, .att-input, .curr-detail, .type-note, .class-count, .day-date {
+  font-feature-settings: 'tnum' 1, 'cv01' 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .page {
-  max-width: 980px;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: 1.5rem 1.25rem 4rem;
+  padding: 1.75rem 1.25rem 4rem;
+}
+
+/* entrance: animate static containers once on load (not inner re-renders) */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.att-panel, .current-grid, .proj-strip, #calendarRoot, .detail-grid {
+  animation: fadeUp .5s cubic-bezier(.2,.7,.2,1) both;
+}
+.current-grid { animation-delay: .04s; }
+.proj-strip   { animation-delay: .08s; }
+#calendarRoot { animation-delay: .12s; }
+.detail-grid  { animation-delay: .16s; }
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
 }
 
 /* ---- Header ---- */
@@ -76,379 +112,338 @@ header {
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  border-bottom: 1.5px solid var(--border-str);
-  padding-bottom: 1rem;
+  gap: 1rem;
+  padding-bottom: 1.1rem;
   margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
 }
-.header-left { display: flex; align-items: center; gap: 12px; }
+.header-left { display: flex; align-items: center; gap: 13px; }
 .idk-badge {
-  font-family: 'DM Serif Display', serif;
-  font-size: 1.35rem;
-  font-weight: 400;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: .04em;
   background: var(--text);
-  color: var(--surface);
-  padding: 2px 10px 4px;
-  border-radius: 6px;
-  letter-spacing: .02em;
+  color: #fff;
+  padding: 7px 11px;
+  border-radius: 10px;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(18,22,31,.18);
 }
-.header-title { line-height: 1.15; }
+.header-title { line-height: 1.1; }
 .header-title h1 {
-  font-family: 'DM Serif Display', serif;
-  font-size: clamp(1.1rem, 3vw, 1.6rem);
-  font-weight: 400;
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 3.5vw, 1.75rem);
+  font-weight: 600;
   letter-spacing: -.02em;
 }
 .header-title p {
   font-size: 11px;
   color: var(--muted);
-  letter-spacing: .05em;
+  letter-spacing: .08em;
   text-transform: uppercase;
+  margin-top: 3px;
 }
 .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
 /* ---- Buttons ---- */
 button {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-size: 13px;
-  padding: 7px 14px;
+  font-weight: 500;
+  padding: 8px 15px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-str);
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
-  font-weight: 500;
-  transition: background .15s, transform .1s;
+  transition: background .15s, transform .08s, box-shadow .15s, border-color .15s;
   white-space: nowrap;
+  box-shadow: var(--shadow-sm);
 }
-button:hover  { background: var(--surface2); }
-button:active { transform: scale(.97); }
-button.primary { background: var(--text); color: var(--surface); border-color: var(--text); }
-button.primary:hover { background: #333; }
+button:hover  { background: var(--surface2); border-color: var(--border-str); }
+button:active { transform: translateY(1px); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--text); color: #fff; border-color: var(--text); }
+button.primary:hover { background: #2a2d35; }
 
 /* ---- Tip box ---- */
 .tip {
-  background: #deeaf7;
-  border: 1px solid #b5d4f4;
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
-  font-size: 12px;
-  color: #0c3d6e;
-  margin-bottom: 1.4rem;
-  line-height: 1.7;
+  background: linear-gradient(180deg, #fbf4ec, #f7ede0);
+  border: 1px solid #ecd9c6;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 12.5px;
+  color: #6b4a32;
+  margin-bottom: 1.5rem;
+  line-height: 1.65;
 }
+.tip strong { color: #4a2f1c; }
 
 /* ---- Section label ---- */
 .section-label {
+  font-family: var(--font-display);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: .07em;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 10px;
+  margin-bottom: 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-label::before {
+  content: '';
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ---- Card base shared look ---- */
+.curr-card, .proj-card, .detail-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
 }
 
 /* ---- Current attendance cards ---- */
-.current-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 1.8rem;
-}
-.curr-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  box-shadow: 0 1px 4px rgba(0,0,0,.06);
-  min-width: 0;
-}
-.curr-title { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 10px; }
-.curr-title.an { color: var(--an-dark); }
-.curr-title.bc { color: var(--bc-dark); }
-.curr-title.py { color: var(--py-dark); }
-.curr-row { margin-bottom: 6px; }
-.curr-row-top { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px; gap: 4px; }
-.curr-row-label { color: var(--muted); flex: 1; min-width: 0; }
+.current-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.9rem; }
+.curr-card { padding: 15px 16px; }
+.curr-title { font-family: var(--font-display); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
+.curr-title::before { content: ''; width: 8px; height: 8px; border-radius: 3px; }
+.curr-title.an { color: var(--an-dark); } .curr-title.an::before { background: var(--an-dark); }
+.curr-title.bc { color: var(--bc-dark); } .curr-title.bc::before { background: var(--bc-dark); }
+.curr-title.py { color: var(--py-dark); } .curr-title.py::before { background: var(--py-dark); }
+.curr-row { margin-bottom: 9px; }
+.curr-row-top { display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 4px; gap: 4px; }
+.curr-row-label { color: var(--muted); flex: 1; min-width: 0; font-weight: 500; }
 .curr-row-pct { font-weight: 600; flex-shrink: 0; }
-.curr-row-pct.safe { color: var(--safe); }
-.curr-row-pct.warn { color: var(--warn); }
-.curr-row-pct.danger { color: var(--danger); }
-.bar-track { height: 4px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
-.bar-fill  { height: 100%; border-radius: 3px; }
-.bar-fill.safe   { background: var(--safe); }
-.bar-fill.warn   { background: var(--warn); }
-.bar-fill.danger { background: var(--danger); }
-.curr-detail { font-size: 10px; color: var(--faint); margin-top: 2px; text-align: right; }
-.curr-total-row {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border);
-}
-.curr-total-label { font-size: 11px; font-weight: 600; color: var(--muted); }
-.curr-total-pct { font-family: 'DM Serif Display', serif; font-size: 1.3rem; line-height: 1; }
+.curr-row-pct.safe { color: var(--safe); } .curr-row-pct.warn { color: var(--warn); } .curr-row-pct.danger { color: var(--danger); }
+.bar-track { height: 6px; background: #eceae5; border-radius: 100px; overflow: hidden; }
+.bar-fill  { height: 100%; border-radius: 100px; transition: width .45s cubic-bezier(.2,.7,.2,1); }
+.bar-fill.safe   { background: linear-gradient(90deg, #25a25b, var(--safe)); }
+.bar-fill.warn   { background: linear-gradient(90deg, #d4940f, var(--warn)); }
+.bar-fill.danger { background: linear-gradient(90deg, #d6493e, var(--danger)); }
+.curr-detail { font-size: 10.5px; color: var(--faint); margin-top: 3px; text-align: right; }
+.curr-total-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--border); }
+.curr-total-label { font-size: 11px; font-weight: 500; color: var(--muted); }
+.curr-total-pct { font-family: var(--font-display); font-size: 1.7rem; font-weight: 600; line-height: 1; letter-spacing: -.02em; }
 .curr-total-pct.safe   { color: var(--safe); }
 .curr-total-pct.warn   { color: var(--warn); }
 .curr-total-pct.danger { color: var(--danger); }
-.short-alert { display: inline-flex; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 600; background: #fde8e8; color: #a32d2d; padding: 2px 6px; border-radius: 4px; margin-top: 6px; }
-.short-list  { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; }
+.short-alert { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; background: #fdecea; color: #a32e25; padding: 3px 8px; border-radius: 100px; margin-top: 6px; }
+.short-list  { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; margin-bottom: 4px; }
 
 /* ---- Projection strip ---- */
-.proj-strip {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 1.8rem;
-}
-.proj-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  box-shadow: 0 1px 4px rgba(0,0,0,.06);
-  min-width: 0;
-}
-.proj-name { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px; }
+.proj-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.9rem; }
+.proj-card { padding: 16px 18px; position: relative; overflow: hidden; }
+.proj-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+.proj-card:has(.proj-name.an)::before { background: var(--an-dark); }
+.proj-card:has(.proj-name.bc)::before { background: var(--bc-dark); }
+.proj-card:has(.proj-name.py)::before { background: var(--py-dark); }
+.proj-name { font-family: var(--font-display); font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 8px; }
 .proj-name.an { color: var(--an-dark); }
 .proj-name.bc { color: var(--bc-dark); }
 .proj-name.py { color: var(--py-dark); }
-.proj-val { font-family: 'DM Serif Display', serif; font-size: 1.5rem; line-height: 1.1; }
+.proj-val { font-family: var(--font-display); font-size: 2.1rem; font-weight: 600; line-height: 1; letter-spacing: -.03em; }
 .proj-val.safe   { color: var(--safe); }
 .proj-val.warn   { color: var(--warn); }
 .proj-val.danger { color: var(--danger); }
-.proj-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.proj-sub { font-size: 11px; color: var(--muted); margin-top: 5px; }
 
 /* ---- Legend ---- */
-.legend {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-  margin-bottom: 1.1rem;
-  font-size: 12px;
-  color: var(--muted);
-}
-.legend strong { color: var(--text); }
-.leg { display: flex; align-items: center; gap: 5px; }
-.dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 1.2rem; font-size: 12px; color: var(--muted); }
+.legend strong { color: var(--text); font-family: var(--font-display); font-weight: 600; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.leg { display: flex; align-items: center; gap: 6px; }
+.dot { width: 11px; height: 11px; border-radius: 4px; flex-shrink: 0; }
 .dot-an    { background: var(--an-dark); }
 .dot-bc    { background: var(--bc-dark); }
 .dot-py    { background: var(--py-dark); }
-.dot-off   { background: #e24b4a; }
-.dot-fixed { background: #c8bff7; }
+.dot-off   { background: #e2554b; }
+.dot-fixed { background: #d9b870; }
 
 /* ---- Calendar ---- */
-.week-block { margin-bottom: 1.5rem; }
-.week-title {
-  font-size: 11px; font-weight: 600; letter-spacing: .07em;
-  text-transform: uppercase; color: var(--muted); margin-bottom: 7px;
-}
-.days-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 6px;
-}
+.week-block { margin-bottom: 1.7rem; }
+.week-title { font-family: var(--font-display); font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-bottom: 9px; }
+.days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
 .day-cell {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 8px 7px 7px;
+  border-radius: 12px;
+  padding: 9px 9px 8px;
   cursor: pointer;
-  min-height: 100px;
+  min-height: 104px;
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   user-select: none;
-  transition: box-shadow .15s, transform .1s, border-color .15s;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .16s, transform .1s, border-color .16s;
   -webkit-tap-highlight-color: transparent;
 }
 .day-cell:not(.fixed):not(.past):not(.no-classes):hover {
   box-shadow: var(--shadow);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   border-color: var(--border-str);
 }
-.day-cell.no-classes { background: var(--bg); border-style: dashed; cursor: default; }
-.day-cell.no-classes:hover { transform: none; box-shadow: none; border-color: var(--border); }
-.day-cell.holiday  { background: #fff5f5; border-color: #f7c1c1; }
-.day-cell.fixed    { background: #f7f3ff; border-color: #c8bff7; cursor: default; }
-.day-cell.past     { background: var(--surface2); border-color: var(--border); cursor: default; opacity: .55; }
+.day-cell.no-classes { background: transparent; border-style: dashed; box-shadow: none; cursor: default; }
+.day-cell.no-classes:hover { transform: none; box-shadow: none; }
+.day-cell.holiday  { background: linear-gradient(180deg, #fff4f3, #ffecea); border-color: #f3c1bb; }
+.day-cell.holiday::after { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 100px; background: #e2554b; }
+.day-cell.fixed    { background: linear-gradient(180deg, #fbf3e3, #f6ead2); border-color: #e6cfa0; cursor: default; }
+.day-cell.past     { background: var(--surface2); border-color: var(--border); box-shadow: none; cursor: default; opacity: .5; }
 .day-cell.past:hover { transform: none; box-shadow: none; }
-.day-date  { font-size: 10px; color: var(--faint); }
-.day-name  { font-size: 13px; font-weight: 600; }
-.pills { display: flex; flex-direction: column; gap: 2px; flex: 1; margin-top: 1px; }
+.day-date  { font-size: 10px; color: var(--faint); font-weight: 500; }
+.day-name  { font-family: var(--font-display); font-size: 13px; font-weight: 600; letter-spacing: -.01em; }
+.pills { display: flex; flex-direction: column; gap: 3px; flex: 1; margin-top: 2px; }
 .pill {
   font-size: 9px;
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-weight: 500;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: .01em;
 }
 .pill-an { background: var(--an-light); color: var(--an-text); }
 .pill-bc { background: var(--bc-light); color: var(--bc-text); }
 .pill-py { background: var(--py-light); color: var(--py-text); }
-.badge { position: absolute; top: 5px; right: 5px; font-size: 8px; padding: 2px 4px; border-radius: 4px; font-weight: 600; }
-.badge-off   { background: #f7c1c1; color: #a32d2d; }
-.badge-fixed { background: #c8bff7; color: #3b2d8a; }
-.badge-past  { background: #e0ddd7; color: #706e66; }
-.class-count { font-size: 9px; color: var(--faint); text-align: right; margin-top: auto; }
+.badge { position: absolute; top: 7px; right: 7px; font-size: 8px; font-weight: 700; letter-spacing: .05em; padding: 2px 5px; border-radius: 100px; }
+.badge-off   { background: #f6cbc5; color: #9c2c23; }
+.badge-fixed { background: #e9d2a0; color: #7a5a1e; }
+.badge-past  { background: #dfe2e8; color: #6b7280; }
+.class-count { font-size: 9px; color: var(--faint); text-align: right; margin-top: auto; font-weight: 500; }
 
 /* ---- Detail projection cards ---- */
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 1.5rem;
-}
-.detail-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  box-shadow: 0 1px 4px rgba(0,0,0,.06);
-  min-width: 0;
-}
-.detail-title { font-size: 13px; font-weight: 600; padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }
-.detail-title.an { color: var(--an-dark); }
-.detail-title.bc { color: var(--bc-dark); }
-.detail-title.py { color: var(--py-dark); }
-.type-row { margin-bottom: 8px; }
-.type-header { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; margin-bottom: 2px; gap: 4px; }
+.detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+.detail-card { padding: 16px 18px; }
+.detail-title { font-family: var(--font-display); font-size: 13px; font-weight: 600; padding-bottom: 9px; margin-bottom: 11px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 7px; }
+.detail-title::before { content: ''; width: 8px; height: 8px; border-radius: 3px; }
+.detail-title.an { color: var(--an-dark); } .detail-title.an::before { background: var(--an-dark); }
+.detail-title.bc { color: var(--bc-dark); } .detail-title.bc::before { background: var(--bc-dark); }
+.detail-title.py { color: var(--py-dark); } .detail-title.py::before { background: var(--py-dark); }
+.type-row { margin-bottom: 10px; }
+.type-header { display: flex; justify-content: space-between; align-items: baseline; font-size: 11.5px; margin-bottom: 3px; gap: 4px; }
 .type-label { color: var(--muted); font-weight: 500; flex: 1; min-width: 0; }
-.type-pct { font-weight: 600; font-size: 12px; flex-shrink: 0; }
+.type-pct { font-weight: 600; font-size: 12.5px; flex-shrink: 0; }
 .type-pct.safe   { color: var(--safe); }
 .type-pct.warn   { color: var(--warn); }
 .type-pct.danger { color: var(--danger); }
-.type-note { font-size: 10px; color: var(--faint); margin-top: 2px; text-align: right; }
-.proj-total-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
-.proj-total-label { font-size: 11px; font-weight: 600; color: var(--muted); }
-.proj-total-pct { font-family: 'DM Serif Display', serif; font-size: 1.3rem; line-height: 1; }
+.type-note { font-size: 10.5px; color: var(--faint); margin-top: 3px; text-align: right; }
+.proj-total-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--border); }
+.proj-total-label { font-size: 11px; font-weight: 500; color: var(--muted); }
+.proj-total-pct { font-family: var(--font-display); font-size: 1.55rem; font-weight: 600; line-height: 1; letter-spacing: -.02em; }
 .proj-total-pct.safe   { color: var(--safe); }
 .proj-total-pct.warn   { color: var(--warn); }
 .proj-total-pct.danger { color: var(--danger); }
 
 /* ---- Footer ---- */
-.footer-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 1rem; font-size: 12px; }
+.footer-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 12px; }
 .footer-info { color: var(--muted); }
 .footer-info strong { color: var(--text); }
-.footer-thresh { color: var(--faint); }
+.footer-thresh { color: var(--faint); font-feature-settings: 'tnum' 1; }
 
-.divider { height: 1px; background: var(--border); margin: 1.8rem 0; }
+.divider { height: 1px; background: var(--border); margin: 1.9rem 0; }
 
 /* ---- Attendance input panel ---- */
 .att-panel {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-bottom: 1.6rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  padding: 16px 18px;
+  margin-bottom: 1.7rem;
+  box-shadow: var(--shadow-sm);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
-.att-panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-.att-panel-title { font-size: 13px; font-weight: 600; color: var(--text); }
-.att-panel-title span { font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+.att-panel-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+.att-panel-title { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--text); }
+.att-panel-title span { font-family: var(--font-body); font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 6px; }
 .att-date-row { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.att-date-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.att-date-label { font-size: 12px; color: var(--muted); white-space: nowrap; font-weight: 500; }
 .att-date-input {
-  font-family: 'DM Sans', sans-serif;
+  font-family: var(--font-body);
   font-size: 13px;
-  padding: 5px 9px;
+  font-weight: 500;
+  padding: 7px 11px;
   border: 1px solid var(--border-str);
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: var(--surface2);
   color: var(--text);
-  width: 90px;
+  width: 100px;
   text-align: center;
+  font-feature-settings: 'tnum' 1;
+  transition: border-color .15s, background .15s;
 }
-.att-date-input:focus { outline: none; border-color: var(--an-dark); }
-.att-table { width: 100%; border-collapse: collapse; min-width: 400px; }
-.att-table th {
-  font-size: 10px; font-weight: 600; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--faint);
-  text-align: left; padding: 4px 6px 8px;
-  border-bottom: 1px solid var(--border);
-}
-.att-table th.subj { min-width: 80px; }
-.att-subj-label { font-size: 12px; font-weight: 600; }
+.att-date-input:focus { outline: none; border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px rgba(201,100,66,.15); }
+.att-table { width: 100%; border-collapse: collapse; min-width: 420px; }
+.att-table th { font-family: var(--font-display); font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); text-align: left; padding: 4px 8px 9px; border-bottom: 1px solid var(--border); }
+.att-table th span { color: #b6bcc8; }
+.att-table th.subj { min-width: 84px; }
+.att-subj-label { font-size: 12.5px; font-weight: 600; font-family: var(--font-display); }
 .att-subj-label.an { color: var(--an-dark); }
 .att-subj-label.bc { color: var(--bc-dark); }
 .att-subj-label.py { color: var(--py-dark); }
-.att-table td { padding: 6px; vertical-align: middle; }
+.att-table td { padding: 9px 8px; vertical-align: middle; }
 .att-table tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
-.att-frac { display: flex; align-items: center; gap: 4px; }
+.att-frac { display: flex; align-items: center; gap: 5px; }
 .att-input {
-  width: 50px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
+  width: 52px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
   text-align: center;
-  padding: 5px 4px;
+  padding: 7px 4px;
   border: 1px solid var(--border-str);
   border-radius: var(--radius-sm);
-  background: var(--bg);
+  background: var(--surface2);
   color: var(--text);
-  transition: border-color .15s, background .15s;
+  transition: border-color .15s, background .15s, box-shadow .15s;
   -webkit-appearance: none;
 }
-.att-input:focus { outline: none; border-color: var(--an-dark); background: var(--surface); }
-.att-input.danger { border-color: var(--danger); background: #fff5f5; }
-.att-slash { font-size: 13px; color: var(--faint); }
-.att-pct { font-size: 12px; font-weight: 600; min-width: 36px; text-align: right; }
+.att-input:focus { outline: none; border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px rgba(201,100,66,.15); }
+.att-input.danger { border-color: var(--danger); background: #fdf0ef; }
+.att-slash { font-size: 14px; color: var(--faint); font-weight: 300; }
+.att-pct { font-size: 12.5px; font-weight: 600; min-width: 38px; text-align: right; }
 .att-pct.safe   { color: var(--safe); }
 .att-pct.warn   { color: var(--warn); }
 .att-pct.danger { color: var(--danger); }
-.att-req { font-size: 10px; color: var(--faint); padding-left: 2px; }
+.att-req { font-size: 10px; color: var(--faint); padding-left: 2px; margin-top: 2px; }
 
 /* ==============================================================
-   RESPONSIVE BREAKPOINTS
-   Desktop:  ≥ 768px  — 6-col calendar, 3-col grids (default above)
-   Tablet:   480–767px — 3-col calendar, 2-col grids
-   Mobile:   < 480px  — 2-col calendar, 1-col grids
+   RESPONSIVE
 ============================================================== */
-
-/* Tablet */
 @media (max-width: 767px) {
-  .page { padding: 1rem 1rem 3rem; }
-  .days-grid { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .page { padding: 1.25rem 1rem 3rem; }
+  .days-grid { grid-template-columns: repeat(3, 1fr); gap: 7px; }
   .current-grid, .proj-strip, .detail-grid { grid-template-columns: repeat(2, 1fr); }
-  .day-cell { min-height: 90px; }
-  header h1, .header-title h1 { font-size: 1.3rem; }
+  .day-cell { min-height: 94px; }
 }
-
-/* Mobile */
 @media (max-width: 479px) {
-  .page { padding: 0.85rem 0.75rem 2.5rem; }
-  .days-grid { grid-template-columns: repeat(2, 1fr); gap: 4px; }
+  .page { padding: 1rem .8rem 2.5rem; }
+  .days-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
   .current-grid, .proj-strip, .detail-grid { grid-template-columns: 1fr; }
-  .day-cell { min-height: 80px; padding: 7px 6px 6px; }
+  .day-cell { min-height: 86px; padding: 8px 8px 7px; }
   .day-name { font-size: 12px; }
   .pill { font-size: 8.5px; }
-  .header-actions button { padding: 6px 10px; font-size: 12px; }
-  .idk-badge { font-size: 1.1rem; padding: 2px 8px 3px; }
-  .footer-thresh { display: none; }  /* too cramped on small screens */
-  .legend { gap: 8px; font-size: 11px; }
+  .header-actions button { padding: 7px 11px; font-size: 12px; }
+  .footer-thresh { display: none; }
+  .legend { gap: 10px; font-size: 11px; }
   .att-panel-header { flex-direction: column; align-items: flex-start; }
-  .proj-val, .curr-total-pct, .proj-total-pct { font-size: 1.15rem; }
+  .proj-val { font-size: 1.85rem; }
+  .curr-total-pct { font-size: 1.5rem; }
 }
-
-/* Very small (iPhone SE etc) */
 @media (max-width: 359px) {
-  .days-grid { grid-template-columns: repeat(2, 1fr); gap: 3px; }
-  .day-cell { min-height: 70px; padding: 5px 4px; }
+  .days-grid { grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .day-cell { min-height: 76px; padding: 6px 6px; }
   .day-date { font-size: 9px; }
   .day-name { font-size: 11px; }
-  .badge { font-size: 7px; padding: 1px 3px; }
+  .badge { font-size: 7px; padding: 1px 4px; }
 }
 </style>
 </head>
@@ -470,18 +465,22 @@ button.primary:hover { background: #333; }
   </header>
 
   <div class="tip">
-    <strong>How to use:</strong> Enter attendance figures and a reference date (DD-MM-YY).
-    Days before that date are greyed out and excluded from projections — only future sessions count.
-    Click any future day to mark it as a holiday.
+    <strong>Your data is saved automatically</strong> in this browser — just enter your numbers once and they'll be here next time.
+    Use <strong>Share link</strong> to generate a URL with your attendance pre-filled — send it to someone or open it on another device.
+    Use <strong>Reset data</strong> to clear saved values and start fresh.
   </div>
 
   <!-- Editable attendance input panel -->
   <div class="att-panel">
     <div class="att-panel-header">
-      <div class="att-panel-title">Enter your attendance &nbsp;<span>— present / total classes held</span></div>
-      <div class="att-date-row">
-        <label class="att-date-label" for="refDate">Data as of:</label>
-        <input class="att-date-input" type="text" id="refDate" value="07-06-26" placeholder="DD-MM-YY" oninput="onRefDateInput()" maxlength="8">
+      <div class="att-panel-title">Your attendance &nbsp;<span>— present / total classes held</span></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div class="att-date-row">
+          <label class="att-date-label" for="refDate">Data as of:</label>
+          <input class="att-date-input" type="text" id="refDate" placeholder="DD-MM-YY" oninput="onRefDateInput()" maxlength="8">
+        </div>
+        <button onclick="shareURL()" title="Copy a link with your attendance pre-filled" style="font-size:12px;padding:5px 11px;">&#x1F517; Share link</button>
+        <button onclick="resetAttendance()" title="Clear saved data and revert to defaults" style="font-size:12px;padding:5px 11px;">&#x21BA; Reset data</button>
       </div>
     </div>
     <table class="att-table">
@@ -496,6 +495,14 @@ button.primary:hover { background: #333; }
       <tbody id="attTableBody"></tbody>
     </table>
   </div>
+
+  <!-- Toast notification -->
+  <div id="toast" style="
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+    background:#1a1a18;color:#fff;font-size:12px;padding:9px 18px;border-radius:20px;
+    box-shadow:0 4px 16px rgba(0,0,0,.25);opacity:0;transition:opacity .25s,transform .25s;
+    z-index:9999;white-space:nowrap;pointer-events:none;
+  "></div>
 
   <!-- Current attendance summary (rendered from inputs) -->
   <div class="section-label" id="currLabel">Current attendance &nbsp;<span style="font-weight:400;color:var(--faint)" id="currLabelDate"></span></div>
@@ -549,19 +556,19 @@ button.primary:hover { background: #333; }
 // ============================================================
 const CURRENT_ATT = {
   AN: {
-    ECE: { present: 2,   total: 4   },
-    L:   { present: 169, total: 179 },
-    SGT: { present: 246, total: 260 },
+    ECE: { present: 0, total: 0 },
+    L:   { present: 0, total: 0 },
+    SGT: { present: 0, total: 0 },
   },
   BC: {
-    ECE: { present: 5,   total: 6   },
-    L:   { present: 64,  total: 66  },
-    SGT: { present: 125, total: 132 },
+    ECE: { present: 0, total: 0 },
+    L:   { present: 0, total: 0 },
+    SGT: { present: 0, total: 0 },
   },
   PY: {
-    ECE: { present: 3,   total: 3   },
-    L:   { present: 126, total: 133 },
-    SGT: { present: 156, total: 160 },
+    ECE: { present: 0, total: 0 },
+    L:   { present: 0, total: 0 },
+    SGT: { present: 0, total: 0 },
   },
 };
 
@@ -602,49 +609,60 @@ const THRESHOLDS = {
 // L already includes SDL (they count the same for attendance).
 // Set "fixed: true" to lock a day as a non-toggleable holiday.
 // ============================================================
-const TIMETABLE_DATA = [ 
-{ date:"8 Jun", day:"Mon", iso:"2026-06-08", week:"Week 35", fixed:false, AN:{ECE:0,L:0,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:1,L:0,SGT:2} }, 
-{ date:"9 Jun", day:"Tue", iso:"2026-06-09", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:1,L:0,SGT:2} }, 
-{ date:"10 Jun", day:"Wed", iso:"2026-06-10", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"11 Jun", day:"Thu", iso:"2026-06-11", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:2,SGT:0}, PY:{ECE:0,L:0,SGT:3} }, 
-{ date:"12 Jun", day:"Fri", iso:"2026-06-12", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:0,SGT:1} }, 
-{ date:"13 Jun", day:"Sat", iso:"2026-06-13", week:"Week 35", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:2}, PY:{ECE:0,L:1,SGT:0} }, 
-{ date:"15 Jun", day:"Mon", iso:"2026-06-15", week:"Week 36", fixed:false, AN:{ECE:1,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"16 Jun", day:"Tue", iso:"2026-06-16", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"17 Jun", day:"Wed", iso:"2026-06-17", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"18 Jun", day:"Thu", iso:"2026-06-18", week:"Week 36", fixed:true, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} }, 
-{ date:"19 Jun", day:"Fri", iso:"2026-06-19", week:"Week 36", fixed:true, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} }, 
-{ date:"20 Jun", day:"Sat", iso:"2026-06-20", week:"Week 36", fixed:true, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} }, 
-{ date:"22 Jun", day:"Mon", iso:"2026-06-22", week:"Week 37", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"23 Jun", day:"Tue", iso:"2026-06-23", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} }, 
-{ date:"24 Jun", day:"Wed", iso:"2026-06-24", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:4}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} }, 
-{ date:"25 Jun", day:"Thu", iso:"2026-06-25", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"26 Jun", day:"Fri", iso:"2026-06-26", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:0} }, 
-{ date:"27 Jun", day:"Sat", iso:"2026-06-27", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:2}, PY:{ECE:0,L:1,SGT:0} }, 
-{ date:"29 Jun", day:"Mon", iso:"2026-06-29", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:2} }, 
-{ date:"30 Jun", day:"Tue", iso:"2026-06-30", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"1 Jul", day:"Wed", iso:"2026-07-01", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} }, 
-{ date:"2 Jul", day:"Thu", iso:"2026-07-02", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:1}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"3 Jul", day:"Fri", iso:"2026-07-03", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:5}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} }, 
-{ date:"4 Jul", day:"Sat", iso:"2026-07-04", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} }, 
-{ date:"6 Jul", day:"Mon", iso:"2026-07-06", week:"Week 39", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"7 Jul", day:"Tue", iso:"2026-07-07", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"8 Jul", day:"Wed", iso:"2026-07-08", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"9 Jul", day:"Thu", iso:"2026-07-09", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:0,SGT:2} }, 
-{ date:"10 Jul", day:"Fri", iso:"2026-07-10", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:1} }, 
-{ date:"11 Jul", day:"Sat", iso:"2026-07-11", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} }, 
-{ date:"13 Jul", day:"Mon", iso:"2026-07-13", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:3} }, 
-{ date:"14 Jul", day:"Tue", iso:"2026-07-14", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:2} }, 
-{ date:"15 Jul", day:"Wed", iso:"2026-07-15", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"16 Jul", day:"Thu", iso:"2026-07-16", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:1,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} }, 
-{ date:"17 Jul", day:"Fri", iso:"2026-07-17", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} }, 
-{ date:"18 Jul", day:"Sat", iso:"2026-07-18", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} }, 
-{ date:"20 Jul", day:"Mon", iso:"2026-07-20", week:"Week 41", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:3} }, 
-{ date:"21 Jul", day:"Tue", iso:"2026-07-21", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"22 Jul", day:"Wed", iso:"2026-07-22", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"23 Jul", day:"Thu", iso:"2026-07-23", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:2} }, 
-{ date:"24 Jul", day:"Fri", iso:"2026-07-24", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:6}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} }, 
-{ date:"25 Jul", day:"Sat", iso:"2026-07-25", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:3}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:0,SGT:1} }, 
+const TIMETABLE_DATA = [
+  // --- Week 36 (15–21 Jun) ---
+  { date:"15 Jun", day:"Mon", iso:"2026-06-15", week:"Week 36", fixed:false, AN:{ECE:1,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"16 Jun", day:"Tue", iso:"2026-06-16", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"17 Jun", day:"Wed", iso:"2026-06-17", week:"Week 36", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"18 Jun", day:"Thu", iso:"2026-06-18", week:"Week 36", fixed:true,  AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} },
+  { date:"19 Jun", day:"Fri", iso:"2026-06-19", week:"Week 36", fixed:true,  AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} },
+  { date:"20 Jun", day:"Sat", iso:"2026-06-20", week:"Week 36", fixed:true,  AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} },
+  { date:"21 Jun", day:"Sun", iso:"2026-06-21", week:"Week 36", fixed:false, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} },
+
+  // --- Week 37 (22–28 Jun) ---
+  { date:"22 Jun", day:"Mon", iso:"2026-06-22", week:"Week 37", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"23 Jun", day:"Tue", iso:"2026-06-23", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
+  { date:"24 Jun", day:"Wed", iso:"2026-06-24", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:4}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} },
+  { date:"25 Jun", day:"Thu", iso:"2026-06-25", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"26 Jun", day:"Fri", iso:"2026-06-26", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:0} },
+  { date:"27 Jun", day:"Sat", iso:"2026-06-27", week:"Week 37", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:2}, PY:{ECE:0,L:1,SGT:0} },
+  { date:"28 Jun", day:"Sun", iso:"2026-06-28", week:"Week 37", fixed:false, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} },
+
+  // --- Week 38 (29 Jun – 5 Jul) ---
+  { date:"29 Jun", day:"Mon", iso:"2026-06-29", week:"Week 38", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"30 Jun", day:"Tue", iso:"2026-06-30", week:"Week 38", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"1 Jul", day:"Wed", iso:"2026-07-01", week:"Week 38", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
+  { date:"2 Jul", day:"Thu", iso:"2026-07-02", week:"Week 38", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"3 Jul", day:"Fri", iso:"2026-07-03", week:"Week 38", fixed:false, AN:{ECE:0,L:1,SGT:4}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:0} },
+  { date:"4 Jul", day:"Sat", iso:"2026-07-04", week:"Week 38", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"5 Jul", day:"Sun", iso:"2026-07-05", week:"Week 38", fixed:false, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} },
+
+  // --- Week 39 (6–12 Jul) ---
+  { date:"6 Jul", day:"Mon", iso:"2026-07-06", week:"Week 39", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"7 Jul", day:"Tue", iso:"2026-07-07", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"8 Jul", day:"Wed", iso:"2026-07-08", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"9 Jul", day:"Thu", iso:"2026-07-09", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"10 Jul", day:"Fri", iso:"2026-07-10", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"11 Jul", day:"Sat", iso:"2026-07-11", week:"Week 39", fixed:false, AN:{ECE:0,L:1,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"12 Jul", day:"Sun", iso:"2026-07-12", week:"Week 39", fixed:false, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} },
+
+  // --- Week 40 (13–19 Jul) ---
+  { date:"13 Jul", day:"Mon", iso:"2026-07-13", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
+  { date:"14 Jul", day:"Tue", iso:"2026-07-14", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:2} },
+  { date:"15 Jul", day:"Wed", iso:"2026-07-15", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:1,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"16 Jul", day:"Thu", iso:"2026-07-16", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:1,L:1,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
+  { date:"17 Jul", day:"Fri", iso:"2026-07-17", week:"Week 40", fixed:false, AN:{ECE:0,L:2,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"18 Jul", day:"Sat", iso:"2026-07-18", week:"Week 40", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:2}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"19 Jul", day:"Sun", iso:"2026-07-19", week:"Week 40", fixed:false, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} },
+
+  // --- Week 41 (20–26 Jul) ---
+  { date:"20 Jul", day:"Mon", iso:"2026-07-20", week:"Week 41", fixed:false, AN:{ECE:0,L:2,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:3} },
+  { date:"21 Jul", day:"Tue", iso:"2026-07-21", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:1}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"22 Jul", day:"Wed", iso:"2026-07-22", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"23 Jul", day:"Thu", iso:"2026-07-23", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:0}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:1,SGT:2} },
+  { date:"24 Jul", day:"Fri", iso:"2026-07-24", week:"Week 41", fixed:false, AN:{ECE:0,L:2,SGT:4}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"25 Jul", day:"Sat", iso:"2026-07-25", week:"Week 41", fixed:false, AN:{ECE:0,L:1,SGT:2}, BC:{ECE:0,L:0,SGT:3}, PY:{ECE:0,L:0,SGT:1} },
+  { date:"26 Jul", day:"Sun", iso:"2026-07-26", week:"Week 41", fixed:false, AN:{ECE:0,L:0,SGT:0}, BC:{ECE:0,L:0,SGT:0}, PY:{ECE:0,L:0,SGT:0} },
 ];
 
 // ============================================================
@@ -714,11 +732,155 @@ function status(buffer) {
 }
 
 // ============================================================
+// PERSISTENCE — localStorage + URL hash
+// ============================================================
+const LS_KEY = 'idk_planner_v1';
+
+// Returns today as DD-MM-YY
+function todayDisplay() {
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yy = String(d.getFullYear()).slice(2);
+  return `${dd}-${mm}-${yy}`;
+}
+
+// Collect current state (attendance + date) from the DOM inputs
+function collectState() {
+  const data = { date: document.getElementById('refDate')?.value || todayDisplay() };
+  ['AN','BC','PY'].forEach(s => {
+    data[s] = {};
+    ['ECE','L','SGT'].forEach(t => {
+      const p = parseInt(document.getElementById(`inp_${s}_${t}_p`)?.value) || 0;
+      const tot = parseInt(document.getElementById(`inp_${s}_${t}_t`)?.value) || 0;
+      data[s][t] = { present: p, total: tot };
+    });
+  });
+  return data;
+}
+
+// Apply a state object to the DOM inputs
+function applyState(data) {
+  if (data.date) {
+    const el = document.getElementById('refDate');
+    if (el) el.value = data.date;
+  }
+  ['AN','BC','PY'].forEach(s => {
+    if (!data[s]) return;
+    ['ECE','L','SGT'].forEach(t => {
+      if (!data[s][t]) return;
+      const pEl = document.getElementById(`inp_${s}_${t}_p`);
+      const tEl = document.getElementById(`inp_${s}_${t}_t`);
+      if (pEl) pEl.value = data[s][t].present;
+      if (tEl) tEl.value = data[s][t].total;
+    });
+  });
+}
+
+// Save current state to localStorage silently
+function saveToStorage() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(collectState()));
+  } catch(e) { /* storage unavailable */ }
+}
+
+// Load state from localStorage; returns null if nothing saved
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+// Encode state into URL hash: base64(JSON)
+function encodeStateToHash(data) {
+  return btoa(JSON.stringify(data));
+}
+
+// Decode state from URL hash; returns null if absent/invalid
+function decodeStateFromHash() {
+  try {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return null;
+    return JSON.parse(atob(hash));
+  } catch(e) { return null; }
+}
+
+// Generate and copy a shareable URL with current state encoded
+function shareURL() {
+  const state = collectState();
+  const hash  = encodeStateToHash(state);
+  const url   = `${location.origin}${location.pathname}#${hash}`;
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('Link copied! Share it to pre-fill attendance.');
+  }).catch(() => {
+    // Fallback: show the URL in a prompt for manual copy
+    prompt('Copy this link:', url);
+  });
+}
+
+// Reset attendance inputs back to CURRENT_ATT defaults and clear storage + hash
+function resetAttendance() {
+  try { localStorage.removeItem(LS_KEY); } catch(e) {}
+  history.replaceState(null, '', location.pathname);
+  // Re-seed inputs from CURRENT_ATT
+  ['AN','BC','PY'].forEach(s => {
+    ['ECE','L','SGT'].forEach(t => {
+      const pEl = document.getElementById(`inp_${s}_${t}_p`);
+      const tEl = document.getElementById(`inp_${s}_${t}_t`);
+      if (pEl) pEl.value = CURRENT_ATT[s][t].present;
+      if (tEl) tEl.value = CURRENT_ATT[s][t].total;
+    });
+  });
+  document.getElementById('refDate').value = todayDisplay();
+  onAttInput();
+  onRefDateInput();
+  showToast('Reset to defaults. Saved data cleared.');
+}
+
+// Priority on load: URL hash > localStorage > CURRENT_ATT defaults
+function loadInitialState() {
+  const fromURL     = decodeStateFromHash();
+  const fromStorage = loadFromStorage();
+
+  if (fromURL) {
+    applyState(fromURL);
+    // Also persist it to localStorage so subsequent visits remember it
+    saveToStorage();
+    showToast('Attendance loaded from shared link.');
+    // Clean the hash from the URL bar so it doesn't look messy
+    history.replaceState(null, '', location.pathname);
+    return;
+  }
+  if (fromStorage) {
+    applyState(fromStorage);
+    return;
+  }
+  // Nothing saved — set today's date as default, leave numbers from CURRENT_ATT
+  const el = document.getElementById('refDate');
+  if (el && !el.value) el.value = todayDisplay();
+}
+
+// ---- Toast ----
+let _toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.opacity = '1';
+  el.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(-50%) translateY(80px)';
+  }, 3000);
+}
+
+// ============================================================
 // RENDER: Attendance input table
 // ============================================================
 function renderAttInputs() {
-  const names  = { AN:'Anatomy', BC:'Biochemistry', PY:'Physiology' };
-  const colors = { AN:'var(--an-dark)', BC:'var(--bc-dark)', PY:'var(--py-dark)' };
+  const names = { AN:'Anatomy', BC:'Biochemistry', PY:'Physiology' };
   let html = '';
 
   ['AN','BC','PY'].forEach(s => {
@@ -746,9 +908,8 @@ function renderAttInputs() {
   document.getElementById('attTableBody').innerHTML = html;
 }
 
-// Called on every input keystroke — update inline % and re-render all panels
+// Called on every input keystroke — update inline %, save to storage, re-render
 function onAttInput() {
-  // Update each inline % badge
   ['AN','BC','PY'].forEach(s => {
     ['ECE','L','SGT'].forEach(t => {
       const p   = parseInt(document.getElementById(`inp_${s}_${t}_p`).value) || 0;
@@ -759,12 +920,11 @@ function onAttInput() {
       const el  = document.getElementById(`pct_${s}_${t}`);
       el.textContent = `${pct}%`;
       el.className   = `att-pct ${cls}`;
-      // Highlight input red if present > total (invalid)
       document.getElementById(`inp_${s}_${t}_p`).className =
         `att-input${p > tot && tot > 0 ? ' danger' : ''}`;
     });
   });
-  // Re-render all dependent panels
+  saveToStorage();   // persist every change silently
   const proj = projectAttendance();
   renderCurrentCards();
   renderProjStrip(proj);
@@ -795,7 +955,7 @@ function getCutoffIso() {
 // Called on every keypress in the date field
 function onRefDateInput() {
   updateRefDate();
-  // Recompute everything — cutoff may have changed
+  saveToStorage();   // persist date change
   const proj = projectAttendance();
   renderCurrentCards();
   renderProjStrip(proj);
@@ -912,7 +1072,7 @@ function renderCalendar() {
     weeks[d.week].push(d);
   });
 
-  const weekOrder = ['Week 35','Week 36','Week 37','Week 38','Week 39','Week 40','Week 41'];
+  const weekOrder = ['Week 36','Week 37','Week 38','Week 39','Week 40','Week 41'];
   let html = '';
 
   weekOrder.forEach(wk => {
@@ -1061,7 +1221,7 @@ function renderFooter() {
     return d && !d.fixed;
   }).length;
   document.getElementById('footerMsg').innerHTML =
-    `<strong>${userHols}</strong> personal holiday${userHols !== 1 ? 's' : ''} selected &nbsp;|&nbsp; Fixed: <strong>18 Jun, 19 Jun, 20 Jun</strong>`;
+    `<strong>${userHols}</strong> personal holiday${userHols !== 1 ? 's' : ''} selected &nbsp;|&nbsp; Fixed: <strong>18 Jun</strong>`;
 }
 
 // ============================================================
@@ -1265,10 +1425,11 @@ function resetHolidays() {
 let _inputsRendered = false;
 
 function render() {
-  // Render the editable input table only once on first load
   if (!_inputsRendered) {
-    renderAttInputs();
-    updateRefDate();
+    renderAttInputs();          // build input table with CURRENT_ATT defaults
+    loadInitialState();         // override with URL hash or localStorage if available
+    updateRefDate();            // set the "as of" label
+    onAttInput();               // refresh inline % badges to match loaded values
     _inputsRendered = true;
   }
   const proj = projectAttendance();
@@ -1283,4 +1444,3 @@ render();
 </script>
 </body>
 </html>
-
