@@ -720,7 +720,7 @@ function projectAttendance() {
       const newPresent = c.present + all[s][t] - missed[s][t];
       const needed     = Math.ceil(newTotal * THRESHOLDS[t] / 100);
       const buffer     = newPresent - needed;
-      const pct        = newTotal > 0 ? Math.round(newPresent / newTotal * 100) : 100;
+      const pct        = newTotal > 0 ? Math.round((newPresent / newTotal) * 100000) / 1000 : 100;
       proj[s][t] = { total:newTotal, present:newPresent, needed, buffer, pct, req:THRESHOLDS[t] };
     });
   });
@@ -888,7 +888,7 @@ function renderAttInputs() {
     ['ECE','L','SGT'].forEach(t => {
       const def = CURRENT_ATT[s][t];
       const req = THRESHOLDS[t];
-      const pct = def.total > 0 ? Math.round(def.present / def.total * 100) : 100;
+      const pct = def.total > 0 ? Math.round((def.present / def.total) * 100000) / 1000 : 100;
       const cls = pct >= req ? 'safe' : 'danger';
       html += `<td>
         <div class="att-frac">
@@ -915,7 +915,7 @@ function onAttInput() {
       const p   = parseInt(document.getElementById(`inp_${s}_${t}_p`).value) || 0;
       const tot = parseInt(document.getElementById(`inp_${s}_${t}_t`).value) || 0;
       const req = THRESHOLDS[t];
-      const pct = tot > 0 ? Math.round(p / tot * 100) : 100;
+      const pct = tot > 0 ? Math.round((p / tot) * 100000) / 1000 : 100;
       const cls = pct >= req ? 'safe' : 'danger';
       const el  = document.getElementById(`pct_${s}_${t}`);
       el.textContent = `${pct}%`;
@@ -988,7 +988,7 @@ function renderCurrentCards() {
   ['AN','BC','PY'].forEach(s => {
     const totalPresent = ['ECE','L','SGT'].reduce((a,t) => a + cur[s][t].present, 0);
     const totalClasses = ['ECE','L','SGT'].reduce((a,t) => a + cur[s][t].total,   0);
-    const overallPct   = totalClasses > 0 ? Math.round(totalPresent / totalClasses * 100) : 100;
+    const overallPct   = totalClasses > 0 ? Math.round((totalPresent / totalClasses) * 100000) / 1000 : 100;
     const overallCls   = overallPct >= 85 ? 'safe' : overallPct >= 80 ? 'warn' : 'danger';
 
     html += `<div class="curr-card">
@@ -997,7 +997,7 @@ function renderCurrentCards() {
     ['ECE','L','SGT'].forEach(t => {
       const { present, total } = cur[s][t];
       const req     = THRESHOLDS[t];
-      const pct     = total > 0 ? Math.round(present / total * 100) : 100;
+      const pct     = total > 0 ? Math.round((present / total) * 100000) / 1000 : 100;
       const cls     = pct >= req ? 'safe' : pct >= req - 5 ? 'warn' : 'danger';
       const isShort = total > 0 && pct < req;
       html += `<div class="curr-row">
@@ -1033,7 +1033,7 @@ function renderProjStrip(proj) {
     // Overall projected %
     const totalPresent = ['ECE','L','SGT'].reduce((a,t) => a + proj[s][t].present, 0);
     const totalClasses = ['ECE','L','SGT'].reduce((a,t) => a + proj[s][t].total,   0);
-    const overallPct   = totalClasses > 0 ? Math.round(totalPresent / totalClasses * 100) : 100;
+    const overallPct   = totalClasses > 0 ? Math.round((totalPresent / totalClasses) * 100000) / 1000 : 100;
 
     const holCount = [...holidays].filter(iso => {
       const d = TIMETABLE_DATA.find(x => x.iso === iso);
@@ -1155,7 +1155,7 @@ function renderDetailCards(proj) {
     // Overall projected % = sum present / sum total across all types
     const totalPresent = ['ECE','L','SGT'].reduce((a,t) => a + proj[s][t].present, 0);
     const totalClasses = ['ECE','L','SGT'].reduce((a,t) => a + proj[s][t].total,   0);
-    const overallPct   = totalClasses > 0 ? Math.round(totalPresent / totalClasses * 100) : 100;
+    const overallPct   = totalClasses > 0 ? Math.round((totalPresent / totalClasses) * 100000) / 1000 : 100;
     const overallCls   = overallPct >= 85 ? 'safe' : overallPct >= 80 ? 'warn' : 'danger';
 
     const shortTypes = ['ECE','L','SGT'].filter(t => proj[s][t].total > 0 && proj[s][t].buffer < 0);
@@ -1221,7 +1221,7 @@ function renderFooter() {
     return d && !d.fixed;
   }).length;
   document.getElementById('footerMsg').innerHTML =
-    `<strong>${userHols}</strong> personal holiday${userHols !== 1 ? 's' : ''} selected &nbsp;|&nbsp; Fixed: <strong>18 Jun, 19 Jun, 20 Jun</strong>`;
+    `<strong>${userHols}</strong> personal holiday${userHols !== 1 ? 's' : ''} selected &nbsp;|&nbsp; Fixed: <strong>18 Jun</strong>`;
 }
 
 // ============================================================
@@ -1287,7 +1287,7 @@ function exportSummary() {
   ['AN','BC','PY'].forEach(s => {
     const totalP = ['ECE','L','SGT'].reduce((a,t) => a + proj[s][t].present, 0);
     const totalT = ['ECE','L','SGT'].reduce((a,t) => a + proj[s][t].total,   0);
-    const overPct = totalT > 0 ? Math.round(totalP / totalT * 100) : 100;
+    const overPct = totalT > 0 ? Math.round((totalP / totalT) * 100000) / 1000 : 100;
     const overCls = statusColor(Math.min(...['ECE','L','SGT'].map(t => proj[s][t].buffer)));
 
     projRows += `<tr>
@@ -1318,7 +1318,7 @@ function exportSummary() {
   ['AN','BC','PY'].forEach(s => {
     const totalP = ['ECE','L','SGT'].reduce((a,t) => a + curAtt[s][t].present, 0);
     const totalT = ['ECE','L','SGT'].reduce((a,t) => a + curAtt[s][t].total,   0);
-    const overPct = totalT > 0 ? Math.round(totalP/totalT*100) : 100;
+    const overPct = totalT > 0 ? Math.round((totalP/totalT) * 100000) / 1000 : 100;
 
     currRows += `<tr>
       <td rowspan="4" style="font-weight:700;color:${colors[s]};vertical-align:top;padding-top:10px;">${names[s]}</td>
@@ -1328,7 +1328,7 @@ function exportSummary() {
     </tr>`;
     ['ECE','L','SGT'].forEach(t => {
       const c   = curAtt[s][t];
-      const pct = c.total > 0 ? Math.round(c.present/c.total*100) : 100;
+      const pct = c.total > 0 ? Math.round((c.present/c.total) * 100000) / 1000 : 100;
       const req = THRESHOLDS[t];
       const isShort = pct < req;
       currRows += `<tr>
@@ -1444,4 +1444,6 @@ render();
 </script>
 </body>
 </html>
+
+
 
