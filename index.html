@@ -11,21 +11,6 @@
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap"
         rel="stylesheet">
 
-    <!-- ============================================================
-  QUICK EDIT GUIDE
-  ---------------------------------------------------------------
-  1. YOUR ATTENDANCE, SGT + CP BATCH, DATE, HOLIDAYS
-     → Entered in the page itself; saved in this browser.
-
-  2. TIMETABLE, CLINICAL POSTINGS, SUBJECTS, THRESHOLDS, COLLEGE HOLIDAYS
-     → Don't edit here. Edit timetables/timetable_2nd_prof.xlsx and run
-       python3 scripts/make_timetable.py
-       (rewrites the PLANNER block between the @generated markers below; see TIMETABLE.md).
-
-  3. CHANGE COLOURS / FONTS
-     → Edit the CSS :root variables below (subject colours come from the workbook).
-============================================================ -->
-
     <style>
         :root {
             /* ---- Type ---- */
@@ -1074,6 +1059,12 @@
         }
 
         /* FA / UHV: shown, not counted */
+        /* "Show class details": let the longer pills wrap instead of cutting off */
+        .pill.wrap {
+            white-space: normal;
+            line-height: 1.25;
+        }
+
         .pill.event {
             background: transparent;
             border: 1px dashed var(--border-str);
@@ -1149,10 +1140,16 @@
             margin-bottom: 1.5rem;
         }
 
+        .cal-tools {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 1.2rem;
+        }
+
         .past-toggle {
             font-size: 12px;
             padding: 6px 12px;
-            margin-bottom: 1.2rem;
         }
 
         /* ==============================================================
@@ -1350,18 +1347,7 @@
     </div><!-- .page -->
 
     <script>
-        // ============================================================
-        // TIMETABLE — generated from timetables/timetable_2nd_prof.xlsx.
-        // To change it, edit the workbook and run (from the repo root):
-        //   python scripts/make_timetable.py timetables/timetable_2nd_prof.xlsx \
-        //     -o app/src/features/planner/mbbs-prof-2.generated.ts --html holidayplanner.html
-        // Each day: classes everyone attends + `batches` (extra classes per SGT / CP batch),
-        // `events` (FA / UHV — shown, not counted), `notes` ("Not sure: …").
-        // Classes keep the type as written (DOAP, SGD, SEM …); `typeMap` says how each counts.
-        // L already includes SDL (they count the same for attendance).
-        // ============================================================
-        // @generated:begin - written by scripts/make_timetable.py from the timetable workbook.
-        // Don't edit by hand: change the workbook and run the script again.
+
         const PLANNER = {
             id: "mbbs-prof-2",
             label: "MBBS · 2nd Prof",
@@ -1647,11 +1633,7 @@
                 {"date": "27 Jun", "day": "Sun", "iso": "2027-06-27", "week": "Week 39", "fixed": false, "classes": {}},
             ],
         };
-        // @generated:end
-
-        // ============================================================
-        // SETUP — derived from PLANNER, nothing to edit below
-        // ============================================================
+        
         const TYPES = Object.keys(PLANNER.thresholds);          // how classes are counted, e.g. CP, L, SGT
         const TYPE_LABELS = { ECE: 'ECE', CP: 'CP', L: 'L / SDL', SGT: 'SGT' };
         const TYPE_MAP = PLANNER.typeMap || {};                  // timetable type -> how it counts, e.g. DOAP -> SGT
@@ -1678,6 +1660,10 @@
         // Your batch in each group, e.g. { sgt: 'A' }.
         let picks = {};
         let showPastWeeks = false;
+        // Calendar pills: "SGT×2" by default; details on = "SGT×2 (DOAP)". Remembered in this browser.
+        const DETAIL_KEY = `${LS_KEY}_details`;
+        let showDetails = false;
+        try { showDetails = localStorage.getItem(DETAIL_KEY) === '1'; } catch (e) { }
 
         const needsBatch = () => PLANNER.batchGroups.some(g => !g.options.includes(picks[g.id]));
 
@@ -2078,6 +2064,21 @@
         // ============================================================
         // RENDER: Calendar
         // ============================================================
+        // A subject's classes that day as counted: "L×1 SGT×2". With details, what each count is
+        // made of when it isn't just that type: "L×1 SGT×2 (DOAP)", "SGT×3 (SGT 1, DOAP 2)".
+        function pillText(entries, details) {
+            const by = {};
+            entries.forEach(([tt, n]) => { (by[TYPE_MAP[tt] || tt] ||= []).push([tt, n]); });
+            const order = Object.keys(by).sort((a, b) => TYPES.indexOf(a) - TYPES.indexOf(b));
+            return order.map(as => {
+                const parts = by[as];
+                let text = `${as}×${parts.reduce((a, [, n]) => a + n, 0)}`;
+                if (details && !(parts.length === 1 && parts[0][0] === as))
+                    text += ` (${parts.map(([tt, n]) => parts.length === 1 ? tt : `${tt} ${n}`).join(', ')})`;
+                return text;
+            }).join(' ');
+        }
+
         function renderDay(d, cutoff) {
             const isPast = d.iso < cutoff;
             const isOff = holidays.has(d.iso);
@@ -2096,13 +2097,11 @@
             const onclick = (isPast || d.fixed || isEmpty) ? '' : `onclick="toggleDay('${d.iso}')"`;
 
             let pills = '';
-            // The types as written in the timetable, hours only when > 1: "PA: L DOAP×2".
             SUBJECTS.forEach(({ code: s, name, color }) => {
                 const t = Object.entries(raw[s] || {}).filter(([, n]) => n);
                 if (!t.length) return;
-                const part = ([tt, n]) => n === 1 ? tt : `${tt}×${n}`;
-                const tip = `${name}: ` + t.map(e => `${part(e)} (counts as ${TYPE_LABELS[TYPE_MAP[e[0]] || e[0]] || '?'})`).join(', ');
-                pills += `<div class="pill" style="--c:${color}" title="${esc(tip)}">${esc(s)}: ${esc(t.map(part).join(' '))}</div>`;
+                const tip = `${name}: ${pillText(t, true)}`;
+                pills += `<div class="pill${showDetails ? ' wrap' : ''}" style="--c:${color}" title="${esc(tip)}">${esc(s)}: ${esc(pillText(t, showDetails))}</div>`;
             });
             events.forEach(e => { pills += `<div class="pill event" title="${esc(e)} (not counted)">${esc(e)}</div>`; });
             notes.forEach(n => { pills += `<div class="day-note" title="${esc(n)}">${esc(n)}</div>`; });
@@ -2134,9 +2133,10 @@
 
             // Weeks that are entirely before the reference date fold away.
             const pastWeeks = PLANNER.weekOrder.filter(w => weeks[w]?.every(d => d.iso < cutoff));
-            let html = pastWeeks.length
+            let html = `<div class="cal-tools">${pastWeeks.length
                 ? `<button class="past-toggle" onclick="togglePastWeeks()">${showPastWeeks ? 'Hide' : 'Show'} ${plural(pastWeeks.length, 'past week')}</button>`
-                : '';
+                : ''}<button class="past-toggle" onclick="toggleDetails()" aria-pressed="${showDetails}"
+                    title="What each SGT / L count is made of (DOAP, SGD, SEM, SDL …)">${showDetails ? 'Hide' : 'Show'} class details</button></div>`;
 
             PLANNER.weekOrder.forEach(wk => {
                 const days = weeks[wk];
@@ -2147,6 +2147,12 @@
             });
 
             document.getElementById('calendarRoot').innerHTML = html;
+        }
+
+        function toggleDetails() {
+            showDetails = !showDetails;
+            try { localStorage.setItem(DETAIL_KEY, showDetails ? '1' : '0'); } catch (e) { }
+            renderCalendar();
         }
 
         function togglePastWeeks() {
